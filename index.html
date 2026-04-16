@@ -803,26 +803,81 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
   // ── INTERACTION: DRAW + DRAG ──
 
   // Interaction state
-  let mode       = 'idle';   // 'idle' | 'drawing' | 'dragging'
-  let selStart   = null;
-  let selCurrent = null;
-  // Drag state
-  let dragTarget = null;     // { list: 'regions'|'imported', index: number }
-  let dragOffset = null;     // { dx, dy } offset from region origin to click point
+  // ── INTERACTION: DRAW · DRAG · RESIZE ──
+
+  const HANDLE_R  = 1;   // handle hit radius (px)
+  const EDGE_W    = 6;   // edge hit zone half-width (px)
+  const MIN_SIZE  = 10;  // minimum region size (px)
+
+  // handle names → CSS cursor + which edges move
+  const HANDLES = [
+    { id: 'nw', cursor: 'nw-resize', mx: true,  my: true,  mw: true,  mh: true  },
+    { id: 'n',  cursor: 'n-resize',  mx: false, my: true,  mw: false, mh: true  },
+    { id: 'ne', cursor: 'ne-resize', mx: false, my: true,  mw: true,  mh: true  },
+    { id: 'e',  cursor: 'e-resize',  mx: false, my: false, mw: true,  mh: false },
+    { id: 'se', cursor: 'se-resize', mx: false, my: false, mw: true,  mh: true  },
+    { id: 's',  cursor: 's-resize',  mx: false, my: false, mw: false, mh: true  },
+    { id: 'sw', cursor: 'sw-resize', mx: true,  my: false, mw: true,  mh: true  },
+    { id: 'w',  cursor: 'w-resize',  mx: true,  my: false, mw: true,  mh: false },
+  ];
+
+  let mode        = 'idle';  // 'idle'|'drawing'|'dragging'|'resizing'
+  let selStart    = null;
+  let selCurrent  = null;
+  let activeTarget = null;   // { list, index } for drag & resize
+  let dragOffset  = null;
+  let resizeHandle = null;   // handle descriptor from HANDLES
+  let resizeStart  = null;   // snapshot of { x, y, w, h } when resize begins
+
+  // ── helpers ──
 
   function getPos(e) {
     const rect = selCanvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-      x: (clientX - rect.left) * (selCanvas.width / rect.width),
+      x: (clientX - rect.left) * (selCanvas.width  / rect.width),
       y: (clientY - rect.top)  * (selCanvas.height / rect.height)
     };
   }
 
-  // Returns the topmost region under point p, or null
-  function hitTest(p) {
-    // Check new regions first (rendered on top), then imported
+  function getList(target) {
+    return target.list === 'regions' ? regions : importedRegions;
+  }
+
+  // Returns handle descriptor + region hit for point p, or null
+  function handleHitTest(p) {
+    const allSets = [
+      { list: 'regions',  arr: regions },
+      { list: 'imported', arr: importedRegions },
+    ];
+    for (const { list, arr } of allSets) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const r = arr[i];
+        const cx = r.x, cy = r.y, cw = r.w, ch = r.h;
+        const pts = {
+          nw: [cx,      cy     ],
+          n:  [cx+cw/2, cy     ],
+          ne: [cx+cw,   cy     ],
+          e:  [cx+cw,   cy+ch/2],
+          se: [cx+cw,   cy+ch  ],
+          s:  [cx+cw/2, cy+ch  ],
+          sw: [cx,      cy+ch  ],
+          w:  [cx,      cy+ch/2],
+        };
+        for (const h of HANDLES) {
+          const [hx, hy] = pts[h.id];
+          if (Math.abs(p.x - hx) <= HANDLE_R + 2 && Math.abs(p.y - hy) <= HANDLE_R + 2) {
+            return { handle: h, list, index: i, region: r };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Returns topmost region interior hit, or null
+  function regionHitTest(p) {
     for (let i = regions.length - 1; i >= 0; i--) {
       const r = regions[i];
       if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
@@ -836,14 +891,26 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     return null;
   }
 
-  // Update cursor based on hover
+  function updatePt(r) {
+    const scale = pdfViewport.scale;
+    r.ptX = Math.round(r.x / scale);
+    r.ptY = Math.round(r.y / scale);
+    r.ptW = Math.round(r.w / scale);
+    r.ptH = Math.round(r.h / scale);
+  }
+
+  // ── cursor on hover ──
   selCanvas.addEventListener('mousemove', e => {
     if (mode !== 'idle') return;
     const p = getPos(e);
-    const hit = hitTest(p);
-    selCanvas.style.cursor = hit ? 'move' : (document.getElementById('region-name').value.trim() ? 'crosshair' : 'default');
+    const hh = handleHitTest(p);
+    if (hh) { selCanvas.style.cursor = hh.handle.cursor; return; }
+    const rh = regionHitTest(p);
+    if (rh) { selCanvas.style.cursor = 'move'; return; }
+    selCanvas.style.cursor = document.getElementById('region-name').value.trim() ? 'crosshair' : 'default';
   });
 
+  // ── pointer events ──
   selCanvas.addEventListener('mousedown',  onPointerDown);
   selCanvas.addEventListener('touchstart', onPointerDown, { passive: true });
   selCanvas.addEventListener('mousemove',  onPointerMove);
@@ -854,18 +921,30 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
   function onPointerDown(e) {
     if (!pdfPage) return;
     const p = getPos(e);
-    const hit = hitTest(p);
 
-    if (hit) {
-      // Start dragging this region
+    // 1. Resize handle?
+    const hh = handleHitTest(p);
+    if (hh) {
+      mode = 'resizing';
+      activeTarget  = { list: hh.list, index: hh.index };
+      resizeHandle  = hh.handle;
+      resizeStart   = { x: hh.region.x, y: hh.region.y, w: hh.region.w, h: hh.region.h };
+      selStart      = p;
+      selCanvas.style.cursor = hh.handle.cursor;
+      return;
+    }
+
+    // 2. Region interior → drag
+    const rh = regionHitTest(p);
+    if (rh) {
       mode = 'dragging';
-      dragTarget = { list: hit.list, index: hit.index };
-      dragOffset = { dx: p.x - hit.region.x, dy: p.y - hit.region.y };
+      activeTarget = { list: rh.list, index: rh.index };
+      dragOffset   = { dx: p.x - rh.region.x, dy: p.y - rh.region.y };
       selCanvas.style.cursor = 'grabbing';
       return;
     }
 
-    // No hit — try to draw a new region if there's a name
+    // 3. Empty → draw
     const name = document.getElementById('region-name').value.trim();
     if (!name) {
       document.getElementById('region-name').focus();
@@ -887,36 +966,63 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
       return;
     }
 
-    if (mode === 'dragging' && dragTarget) {
-      const list = dragTarget.list === 'regions' ? regions : importedRegions;
-      const r    = list[dragTarget.index];
+    if (mode === 'dragging' && activeTarget) {
+      const list = getList(activeTarget);
+      const r    = list[activeTarget.index];
       let newX = p.x - dragOffset.dx;
       let newY = p.y - dragOffset.dy;
-      // Clamp within canvas
       newX = Math.max(0, Math.min(newX, overlayCanvas.width  - r.w));
       newY = Math.max(0, Math.min(newY, overlayCanvas.height - r.h));
-
-      r.x = newX;
-      r.y = newY;
-      // Update pt values live
-      const scale = pdfViewport.scale;
-      r.ptX = Math.round(newX / scale);
-      r.ptY = Math.round(newY / scale);
-
+      r.x = newX; r.y = newY;
+      updatePt(r);
       redrawRegions();
-      updateUI();   // live coordinate update in the list
+      updateUI();
+      return;
+    }
+
+    if (mode === 'resizing' && activeTarget && resizeHandle) {
+      const list = getList(activeTarget);
+      const r    = list[activeTarget.index];
+      const dx   = p.x - selStart.x;
+      const dy   = p.y - selStart.y;
+      const s    = resizeStart;
+      const h    = resizeHandle;
+
+      let nx = s.x, ny = s.y, nw = s.w, nh = s.h;
+
+      // West edge moves left border
+      if (h.mx) { nx = s.x + dx; nw = s.w - dx; }
+      // East edge moves right border
+      else if (h.mw) { nw = s.w + dx; }
+
+      // North edge moves top border
+      if (h.my) { ny = s.y + dy; nh = s.h - dy; }
+      // South edge moves bottom border
+      else if (h.mh) { nh = s.h + dy; }
+
+      // Enforce minimums and canvas bounds
+      if (nw < MIN_SIZE) { if (h.mx) nx = s.x + s.w - MIN_SIZE; nw = MIN_SIZE; }
+      if (nh < MIN_SIZE) { if (h.my) ny = s.y + s.h - MIN_SIZE; nh = MIN_SIZE; }
+      nx = Math.max(0, nx); ny = Math.max(0, ny);
+      if (nx + nw > overlayCanvas.width)  nw = overlayCanvas.width  - nx;
+      if (ny + nh > overlayCanvas.height) nh = overlayCanvas.height - ny;
+
+      r.x = nx; r.y = ny; r.w = nw; r.h = nh;
+      updatePt(r);
+      redrawRegions();
+      updateUI();
     }
   }
 
   function onPointerUp(e) {
     if (mode === 'drawing') {
       mode = 'idle';
-      const pos = selCurrent;
-      const x = Math.min(selStart.x, pos.x);
-      const y = Math.min(selStart.y, pos.y);
-      const w = Math.abs(pos.x - selStart.x);
-      const h = Math.abs(pos.y - selStart.y);
       sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      if (!selCurrent) return;
+      const x = Math.min(selStart.x, selCurrent.x);
+      const y = Math.min(selStart.y, selCurrent.y);
+      const w = Math.abs(selCurrent.x - selStart.x);
+      const h = Math.abs(selCurrent.y - selStart.y);
       if (w < 5 || h < 5) return;
 
       const name  = document.getElementById('region-name').value.trim();
@@ -924,23 +1030,23 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
       const scale = pdfViewport.scale;
       regions.push({
         name, color, x, y, w, h,
-        ptX: Math.round(x / scale),
-        ptY: Math.round(y / scale),
-        ptW: Math.round(w / scale),
-        ptH: Math.round(h / scale),
+        ptX: Math.round(x / scale), ptY: Math.round(y / scale),
+        ptW: Math.round(w / scale), ptH: Math.round(h / scale),
       });
       document.getElementById('region-name').value = '';
       redrawRegions();
       updateUI();
     }
 
-    if (mode === 'dragging') {
+    if (mode === 'dragging' || mode === 'resizing') {
       mode = 'idle';
-      dragTarget = null;
-      dragOffset = null;
-      selCanvas.style.cursor = 'crosshair';
+      activeTarget = null; dragOffset = null;
+      resizeHandle = null; resizeStart = null; selStart = null;
+      selCanvas.style.cursor = 'default';
     }
   }
+
+  // ── draw helpers ──
 
   function drawSelectionPreview() {
     sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
@@ -958,13 +1064,30 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     sctx.setLineDash([]);
   }
 
+  function drawHandles(r, color) {
+    const cx = r.x, cy = r.y, cw = r.w, ch = r.h;
+    const pts = [
+      [cx,      cy     ], [cx+cw/2, cy     ], [cx+cw,   cy     ],
+      [cx+cw,   cy+ch/2],
+      [cx+cw,   cy+ch  ], [cx+cw/2, cy+ch  ], [cx,      cy+ch  ],
+      [cx,      cy+ch/2],
+    ];
+    pts.forEach(([hx, hy]) => {
+      octx.beginPath();
+      octx.arc(hx, hy, HANDLE_R, 0, Math.PI * 2);
+      octx.fillStyle = '#fff';
+      octx.fill();
+      octx.strokeStyle = color;
+      octx.lineWidth = 2;
+      octx.stroke();
+    });
+  }
+
   // ── DRAW ──
   function drawRegion(r, imported) {
     const rgb = hexToRgb(r.color);
-    // fill
     octx.fillStyle = `rgba(${rgb},${imported ? 0.12 : 0.18})`;
     octx.fillRect(r.x, r.y, r.w, r.h);
-    // border — dashed for imported, solid for new
     octx.strokeStyle = r.color;
     octx.lineWidth = imported ? 1.5 : 2;
     if (imported) octx.setLineDash([6, 4]);
@@ -976,9 +1099,10 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     octx.fillStyle = r.color;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    // badge tag for imported
     const label = (imported ? '↩ ' : '') + (r.name.length > 16 ? r.name.slice(0,14)+'…' : r.name);
     octx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
+    // resize handles
+    drawHandles(r, r.color);
   }
 
   function redrawRegions() {
