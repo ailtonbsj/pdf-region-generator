@@ -686,9 +686,6 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
   let pdfViewport     = null;
   let regions         = [];   // manually drawn
   let importedRegions = [];   // parsed from pasted snippets
-  let selecting       = false;
-  let selStart        = null;
-  let selCurrent      = null;
 
   // Vivid colors for new regions
   const COLORS = [
@@ -803,7 +800,16 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     showToast('Regiões importadas removidas.');
   });
 
-  // ── SELECTION ──
+  // ── INTERACTION: DRAW + DRAG ──
+
+  // Interaction state
+  let mode       = 'idle';   // 'idle' | 'drawing' | 'dragging'
+  let selStart   = null;
+  let selCurrent = null;
+  // Drag state
+  let dragTarget = null;     // { list: 'regions'|'imported', index: number }
+  let dragOffset = null;     // { dx, dy } offset from region origin to click point
+
   function getPos(e) {
     const rect = selCanvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -814,61 +820,130 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     };
   }
 
-  selCanvas.addEventListener('mousedown',  startSel);
-  selCanvas.addEventListener('touchstart', startSel, { passive: true });
-  selCanvas.addEventListener('mousemove',  moveSel);
-  selCanvas.addEventListener('touchmove',  moveSel, { passive: true });
-  document.addEventListener('mouseup',  endSel);
-  document.addEventListener('touchend', endSel);
+  // Returns the topmost region under point p, or null
+  function hitTest(p) {
+    // Check new regions first (rendered on top), then imported
+    for (let i = regions.length - 1; i >= 0; i--) {
+      const r = regions[i];
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
+        return { list: 'regions', index: i, region: r };
+    }
+    for (let i = importedRegions.length - 1; i >= 0; i--) {
+      const r = importedRegions[i];
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
+        return { list: 'imported', index: i, region: r };
+    }
+    return null;
+  }
 
-  function startSel(e) {
-    const name = document.getElementById('region-name').value.trim();
-    if (!pdfPage || !name) {
-      if (!name) {
-        document.getElementById('region-name').focus();
-        document.getElementById('region-name').style.borderColor = 'var(--accent)';
-        setTimeout(() => document.getElementById('region-name').style.borderColor = '', 1200);
-      }
+  // Update cursor based on hover
+  selCanvas.addEventListener('mousemove', e => {
+    if (mode !== 'idle') return;
+    const p = getPos(e);
+    const hit = hitTest(p);
+    selCanvas.style.cursor = hit ? 'move' : (document.getElementById('region-name').value.trim() ? 'crosshair' : 'default');
+  });
+
+  selCanvas.addEventListener('mousedown',  onPointerDown);
+  selCanvas.addEventListener('touchstart', onPointerDown, { passive: true });
+  selCanvas.addEventListener('mousemove',  onPointerMove);
+  selCanvas.addEventListener('touchmove',  onPointerMove, { passive: true });
+  document.addEventListener('mouseup',  onPointerUp);
+  document.addEventListener('touchend', onPointerUp);
+
+  function onPointerDown(e) {
+    if (!pdfPage) return;
+    const p = getPos(e);
+    const hit = hitTest(p);
+
+    if (hit) {
+      // Start dragging this region
+      mode = 'dragging';
+      dragTarget = { list: hit.list, index: hit.index };
+      dragOffset = { dx: p.x - hit.region.x, dy: p.y - hit.region.y };
+      selCanvas.style.cursor = 'grabbing';
       return;
     }
-    selecting = true;
-    selStart = getPos(e);
-    selCurrent = { ...selStart };
-  }
 
-  function moveSel(e) {
-    if (!selecting) return;
-    selCurrent = getPos(e);
-    drawSelection();
-  }
-
-  function endSel(e) {
-    if (!selecting) return;
-    selecting = false;
-    const pos = selCurrent;
-    const x = Math.min(selStart.x, pos.x);
-    const y = Math.min(selStart.y, pos.y);
-    const w = Math.abs(pos.x - selStart.x);
-    const h = Math.abs(pos.y - selStart.y);
-    if (w < 5 || h < 5) { sctx.clearRect(0,0,selCanvas.width,selCanvas.height); return; }
-
+    // No hit — try to draw a new region if there's a name
     const name = document.getElementById('region-name').value.trim();
-    const color = COLORS[regions.length % COLORS.length];
-    const scale = pdfViewport.scale;
-    const ptX = Math.round(x / scale);
-    const ptY = Math.round(y / scale);
-    const ptW = Math.round(w / scale);
-    const ptH = Math.round(h / scale);
-
-    regions.push({ name, color, x, y, w, h, ptX, ptY, ptW, ptH });
-    document.getElementById('region-name').value = '';
-    sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
-    redrawRegions();
-    updateUI();
+    if (!name) {
+      document.getElementById('region-name').focus();
+      document.getElementById('region-name').style.borderColor = 'var(--accent)';
+      setTimeout(() => document.getElementById('region-name').style.borderColor = '', 1200);
+      return;
+    }
+    mode = 'drawing';
+    selStart   = p;
+    selCurrent = { ...p };
   }
 
-  function drawSelection() {
-    sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
+  function onPointerMove(e) {
+    const p = getPos(e);
+
+    if (mode === 'drawing') {
+      selCurrent = p;
+      drawSelectionPreview();
+      return;
+    }
+
+    if (mode === 'dragging' && dragTarget) {
+      const list = dragTarget.list === 'regions' ? regions : importedRegions;
+      const r    = list[dragTarget.index];
+      let newX = p.x - dragOffset.dx;
+      let newY = p.y - dragOffset.dy;
+      // Clamp within canvas
+      newX = Math.max(0, Math.min(newX, overlayCanvas.width  - r.w));
+      newY = Math.max(0, Math.min(newY, overlayCanvas.height - r.h));
+
+      r.x = newX;
+      r.y = newY;
+      // Update pt values live
+      const scale = pdfViewport.scale;
+      r.ptX = Math.round(newX / scale);
+      r.ptY = Math.round(newY / scale);
+
+      redrawRegions();
+      updateUI();   // live coordinate update in the list
+    }
+  }
+
+  function onPointerUp(e) {
+    if (mode === 'drawing') {
+      mode = 'idle';
+      const pos = selCurrent;
+      const x = Math.min(selStart.x, pos.x);
+      const y = Math.min(selStart.y, pos.y);
+      const w = Math.abs(pos.x - selStart.x);
+      const h = Math.abs(pos.y - selStart.y);
+      sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      if (w < 5 || h < 5) return;
+
+      const name  = document.getElementById('region-name').value.trim();
+      const color = COLORS[regions.length % COLORS.length];
+      const scale = pdfViewport.scale;
+      regions.push({
+        name, color, x, y, w, h,
+        ptX: Math.round(x / scale),
+        ptY: Math.round(y / scale),
+        ptW: Math.round(w / scale),
+        ptH: Math.round(h / scale),
+      });
+      document.getElementById('region-name').value = '';
+      redrawRegions();
+      updateUI();
+    }
+
+    if (mode === 'dragging') {
+      mode = 'idle';
+      dragTarget = null;
+      dragOffset = null;
+      selCanvas.style.cursor = 'crosshair';
+    }
+  }
+
+  function drawSelectionPreview() {
+    sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
     if (!selStart || !selCurrent) return;
     const x = Math.min(selStart.x, selCurrent.x);
     const y = Math.min(selStart.y, selCurrent.y);
@@ -876,7 +951,7 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     const h = Math.abs(selCurrent.y - selStart.y);
     sctx.strokeStyle = '#e85d26';
     sctx.lineWidth = 2;
-    sctx.setLineDash([6,3]);
+    sctx.setLineDash([6, 3]);
     sctx.strokeRect(x, y, w, h);
     sctx.fillStyle = 'rgba(232,93,38,0.10)';
     sctx.fillRect(x, y, w, h);
@@ -939,9 +1014,9 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
       html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:4px 2px 2px;">Importadas</div>`;
       html += importedRegions.map((r, i) => `
         <div class="region-item" style="opacity:.85;">
-          <div class="region-color-dot" style="background:${r.color};border:1.5px dashed ${r.color};background:transparent;"></div>
+          <div class="region-color-dot" style="border:1.5px dashed ${r.color};background:transparent;"></div>
           <div class="region-name" title="${r.name}">${r.name}</div>
-          <div class="region-coords">${r.ptW}×${r.ptH}</div>
+          <div class="region-coords" title="x, y, largura, altura">${r.ptX},${r.ptY} · ${r.ptW}×${r.ptH}</div>
           <button class="region-del" onclick="deleteImported(${i})" title="Remover">
             <span class="material-icons-round">close</span>
           </button>
@@ -955,7 +1030,7 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
         <div class="region-item">
           <div class="region-color-dot" style="background:${r.color}"></div>
           <div class="region-name" title="${r.name}">${r.name}</div>
-          <div class="region-coords">${r.ptW}×${r.ptH}</div>
+          <div class="region-coords" title="x, y, largura, altura">${r.ptX},${r.ptY} · ${r.ptW}×${r.ptH}</div>
           <button class="region-del" onclick="deleteRegion(${i})" title="Remover">
             <span class="material-icons-round">close</span>
           </button>
