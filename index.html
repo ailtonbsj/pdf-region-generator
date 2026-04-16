@@ -508,6 +508,26 @@
           </div>
         </div>
 
+        <!-- Import snippets -->
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">content_paste</span>
+            Importar Snippets
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5;">
+            Cole snippets existentes abaixo. Eles serão exibidos no canvas e incluídos no código final.
+          </div>
+          <textarea id="import-textarea" placeholder='stripper.addRegion("nome", new Rectangle(x, y, w, h));' rows="4" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:11.5px;resize:vertical;outline:none;line-height:1.6;transition:border-color .2s,background .2s;"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-primary" id="import-btn" style="flex:1;justify-content:center;">
+              <span class="material-icons-round">playlist_add</span>Carregar
+            </button>
+            <button class="btn btn-ghost" id="clear-imports-btn" title="Remover regiões importadas">
+              <span class="material-icons-round">layers_clear</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Regions list -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;justify-content:space-between;">
@@ -662,19 +682,26 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
   const octx         = overlayCanvas.getContext('2d');
   const sctx         = selCanvas.getContext('2d');
 
-  let pdfPage    = null;
-  let pdfViewport= null;
-  let regions    = [];
-  let selecting  = false;
-  let selStart   = null;
-  let selCurrent = null;
+  let pdfPage         = null;
+  let pdfViewport     = null;
+  let regions         = [];   // manually drawn
+  let importedRegions = [];   // parsed from pasted snippets
+  let selecting       = false;
+  let selStart        = null;
+  let selCurrent      = null;
 
+  // Vivid colors for new regions
   const COLORS = [
     '#e85d26','#2196f3','#4caf50','#9c27b0','#ff9800',
-    '#00bcd4','#e91e63','#795548','#607d8b','#cddc39'
+    '#00bcd4','#e91e63','#f44336','#8bc34a','#3f51b5'
+  ];
+  // Muted blue-grey palette for imported regions
+  const IMPORT_COLORS = [
+    '#546e7a','#78909c','#455a64','#607d8b','#90a4ae',
+    '#37474f','#80cbc4','#4db6ac','#263238','#b0bec5'
   ];
 
-  // Drop zone events
+  // ── DROP ZONE ──
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
@@ -720,11 +747,61 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
       setTimeout(() => loadingBar.style.width = '0%', 500);
 
       regions = [];
+      // Re-project imported regions onto new scale
+      if (importedRegions.length) projectImported();
       redrawRegions();
       updateUI();
     };
     reader.readAsArrayBuffer(file);
   }
+
+  // ── IMPORT SNIPPETS ──
+  // Regex: stripper.addRegion("name", new Rectangle(x, y, w, h));
+  const SNIPPET_RE = /addRegion\(\s*"([^"]+)"\s*,\s*new\s+Rectangle\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g;
+
+  document.getElementById('import-btn').addEventListener('click', () => {
+    const raw = document.getElementById('import-textarea').value;
+    const parsed = [];
+    let m;
+    SNIPPET_RE.lastIndex = 0;
+    while ((m = SNIPPET_RE.exec(raw)) !== null) {
+      parsed.push({
+        name: m[1],
+        ptX: parseInt(m[2]), ptY: parseInt(m[3]),
+        ptW: parseInt(m[4]), ptH: parseInt(m[5])
+      });
+    }
+    if (!parsed.length) {
+      showToast('Nenhum snippet válido encontrado.');
+      return;
+    }
+    importedRegions = parsed;
+    if (pdfViewport) projectImported();
+    redrawRegions();
+    updateUI();
+    showToast(`${parsed.length} região(ões) importada(s)!`);
+  });
+
+  // Convert pt coords → canvas pixel coords using current scale
+  function projectImported() {
+    const scale = pdfViewport.scale;
+    importedRegions = importedRegions.map((r, i) => ({
+      ...r,
+      color: IMPORT_COLORS[i % IMPORT_COLORS.length],
+      x: r.ptX * scale,
+      y: r.ptY * scale,
+      w: r.ptW * scale,
+      h: r.ptH * scale,
+    }));
+  }
+
+  document.getElementById('clear-imports-btn').addEventListener('click', () => {
+    importedRegions = [];
+    document.getElementById('import-textarea').value = '';
+    redrawRegions();
+    updateUI();
+    showToast('Regiões importadas removidas.');
+  });
 
   // ── SELECTION ──
   function getPos(e) {
@@ -777,7 +854,6 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
 
     const name = document.getElementById('region-name').value.trim();
     const color = COLORS[regions.length % COLORS.length];
-    // Convert to pt (1 pt = 1/72 inch; PDF units)
     const scale = pdfViewport.scale;
     const ptX = Math.round(x / scale);
     const ptY = Math.round(y / scale);
@@ -807,26 +883,35 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     sctx.setLineDash([]);
   }
 
+  // ── DRAW ──
+  function drawRegion(r, imported) {
+    const rgb = hexToRgb(r.color);
+    // fill
+    octx.fillStyle = `rgba(${rgb},${imported ? 0.12 : 0.18})`;
+    octx.fillRect(r.x, r.y, r.w, r.h);
+    // border — dashed for imported, solid for new
+    octx.strokeStyle = r.color;
+    octx.lineWidth = imported ? 1.5 : 2;
+    if (imported) octx.setLineDash([6, 4]);
+    octx.strokeRect(r.x, r.y, r.w, r.h);
+    octx.setLineDash([]);
+    // label
+    const fsize = Math.min(13, Math.max(8, r.h * 0.35));
+    octx.font = `${imported ? '500' : '600'} ${fsize}px DM Sans, sans-serif`;
+    octx.fillStyle = r.color;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    // badge tag for imported
+    const label = (imported ? '↩ ' : '') + (r.name.length > 16 ? r.name.slice(0,14)+'…' : r.name);
+    octx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
+  }
+
   function redrawRegions() {
     octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    regions.forEach(r => {
-      // fill
-      const rgb = hexToRgb(r.color);
-      octx.fillStyle = `rgba(${rgb},0.18)`;
-      octx.fillRect(r.x, r.y, r.w, r.h);
-      // border
-      octx.strokeStyle = r.color;
-      octx.lineWidth = 2;
-      octx.strokeRect(r.x, r.y, r.w, r.h);
-      // label
-      const fsize = Math.min(13, Math.max(8, r.h * 0.35));
-      octx.font = `600 ${fsize}px DM Sans, sans-serif`;
-      octx.fillStyle = r.color;
-      octx.textAlign = 'center';
-      octx.textBaseline = 'middle';
-      const label = r.name.length > 18 ? r.name.slice(0,16)+'…' : r.name;
-      octx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
-    });
+    // Draw imported first (behind)
+    importedRegions.forEach(r => drawRegion(r, true));
+    // Draw new regions on top
+    regions.forEach(r => drawRegion(r, false));
   }
 
   function hexToRgb(hex) {
@@ -836,31 +921,53 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     return `${r},${g},${b}`;
   }
 
+  // ── UI ──
   function updateUI() {
-    const list  = document.getElementById('regions-list');
-    const count = document.getElementById('region-count');
-    const genBtn= document.getElementById('generate-btn');
-    const clrBtn= document.getElementById('clear-btn');
+    const list   = document.getElementById('regions-list');
+    const count  = document.getElementById('region-count');
+    const genBtn = document.getElementById('generate-btn');
+    const clrBtn = document.getElementById('clear-btn');
 
-    count.textContent = regions.length;
-    genBtn.disabled = regions.length === 0;
-    clrBtn.disabled = regions.length === 0 && !pdfPage;
+    const total = regions.length + importedRegions.length;
+    count.textContent = total;
+    genBtn.disabled = total === 0;
+    clrBtn.disabled = total === 0 && !pdfPage;
 
-    if (regions.length === 0) {
-      list.innerHTML = `<div class="empty-state"><span class="material-icons-round">crop_free</span>Nenhuma região criada</div>`;
-      return;
+    let html = '';
+
+    if (importedRegions.length) {
+      html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:4px 2px 2px;">Importadas</div>`;
+      html += importedRegions.map((r, i) => `
+        <div class="region-item" style="opacity:.85;">
+          <div class="region-color-dot" style="background:${r.color};border:1.5px dashed ${r.color};background:transparent;"></div>
+          <div class="region-name" title="${r.name}">${r.name}</div>
+          <div class="region-coords">${r.ptW}×${r.ptH}</div>
+          <button class="region-del" onclick="deleteImported(${i})" title="Remover">
+            <span class="material-icons-round">close</span>
+          </button>
+        </div>
+      `).join('');
     }
 
-    list.innerHTML = regions.map((r, i) => `
-      <div class="region-item">
-        <div class="region-color-dot" style="background:${r.color}"></div>
-        <div class="region-name" title="${r.name}">${r.name}</div>
-        <div class="region-coords">${r.ptW}×${r.ptH}</div>
-        <button class="region-del" onclick="deleteRegion(${i})" title="Remover">
-          <span class="material-icons-round">close</span>
-        </button>
-      </div>
-    `).join('');
+    if (regions.length) {
+      if (importedRegions.length) html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 2px 2px;">Novas</div>`;
+      html += regions.map((r, i) => `
+        <div class="region-item">
+          <div class="region-color-dot" style="background:${r.color}"></div>
+          <div class="region-name" title="${r.name}">${r.name}</div>
+          <div class="region-coords">${r.ptW}×${r.ptH}</div>
+          <button class="region-del" onclick="deleteRegion(${i})" title="Remover">
+            <span class="material-icons-round">close</span>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    if (!html) {
+      html = `<div class="empty-state"><span class="material-icons-round">crop_free</span>Nenhuma região criada</div>`;
+    }
+
+    list.innerHTML = html;
   }
 
   function deleteRegion(i) {
@@ -870,12 +977,33 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     document.getElementById('code-output').style.display = 'none';
   }
 
+  function deleteImported(i) {
+    importedRegions.splice(i, 1);
+    redrawRegions();
+    updateUI();
+    document.getElementById('code-output').style.display = 'none';
+  }
+
   // ── GENERATE CODE ──
   document.getElementById('generate-btn').addEventListener('click', () => {
-    if (regions.length === 0) return;
-    const lines = regions.map(r =>
-      `stripper.addRegion("${r.name}", new Rectangle(${r.ptX}, ${r.ptY}, ${r.ptW}, ${r.ptH}));`
-    ).join('\n');
+    const total = regions.length + importedRegions.length;
+    if (total === 0) return;
+
+    // Imported first, then new
+    const toSnippet = r =>
+      `stripper.addRegion("${r.name}", new Rectangle(${r.ptX}, ${r.ptY}, ${r.ptW}, ${r.ptH}));`;
+
+    const parts = [];
+    if (importedRegions.length) {
+      parts.push('// Regiões importadas');
+      parts.push(...importedRegions.map(toSnippet));
+    }
+    if (regions.length) {
+      if (importedRegions.length) parts.push('');
+      parts.push('// Novas regiões');
+      parts.push(...regions.map(toSnippet));
+    }
+    const lines = parts.join('\n');
 
     const out = document.getElementById('code-output');
     out.style.display = 'block';
@@ -888,9 +1016,10 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     });
   });
 
-  // ── CLEAR ──
+  // ── CLEAR ALL ──
   document.getElementById('clear-btn').addEventListener('click', () => {
     regions = [];
+    importedRegions = [];
     pdfPage = null;
     pdfViewport = null;
     ctx.clearRect(0,0,pdfCanvas.width,pdfCanvas.height);
@@ -899,6 +1028,7 @@ stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
     canvasWrap.style.display = 'none';
     dropZone.style.display = '';
     pdfInput.value = '';
+    document.getElementById('import-textarea').value = '';
     document.getElementById('code-output').style.display = 'none';
     document.getElementById('code-output').textContent = '';
     document.getElementById('region-name').value = '';
