@@ -9,467 +9,139 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root {
-    --bg: #f4f3ef;
-    --bg2: #eae9e3;
-    --surface: #ffffff;
-    --surface2: #f0efe9;
-    --border: #d8d6ce;
-    --text: #1a1917;
-    --text2: #6b6860;
-    --text3: #9b9890;
-    --accent: #e85d26;
-    --accent2: #c44d1e;
-    --accent-bg: #fdf0eb;
-    --nav-w: 260px;
-    --toolbar-h: 56px;
-    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
-    --shadow-lg: 0 8px 32px rgba(0,0,0,.1);
-    --radius: 10px;
-    --transition: .2s cubic-bezier(.4,0,.2,1);
+    --bg:#f4f3ef;--bg2:#eae9e3;--surface:#ffffff;--surface2:#f0efe9;
+    --border:#d8d6ce;--text:#1a1917;--text2:#6b6860;--text3:#9b9890;
+    --accent:#e85d26;--accent2:#c44d1e;--accent-bg:#fdf0eb;
+    --nav-w:260px;--toolbar-h:56px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
+    --shadow-lg:0 8px 32px rgba(0,0,0,.1);
+    --radius:10px;--transition:.2s cubic-bezier(.4,0,.2,1);
   }
   [data-theme="dark"] {
-    --bg: #141312;
-    --bg2: #1c1b19;
-    --surface: #201f1d;
-    --surface2: #282724;
-    --border: #333230;
-    --text: #f0ede8;
-    --text2: #9b9890;
-    --text3: #6b6860;
-    --accent: #f07040;
-    --accent2: #e85d26;
-    --accent-bg: #2a1a10;
-    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
-    --shadow-lg: 0 8px 32px rgba(0,0,0,.4);
+    --bg:#141312;--bg2:#1c1b19;--surface:#201f1d;--surface2:#282724;
+    --border:#333230;--text:#f0ede8;--text2:#9b9890;--text3:#6b6860;
+    --accent:#f07040;--accent2:#e85d26;--accent-bg:#2a1a10;
+    --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2);
+    --shadow-lg:0 8px 32px rgba(0,0,0,.4);
   }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    transition: background var(--transition), color var(--transition);
-  }
-
-  /* TOOLBAR */
-  .toolbar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: var(--toolbar-h);
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
-    z-index: 200;
-    box-shadow: var(--shadow);
-    transition: background var(--transition), border-color var(--transition);
-  }
-  .toolbar-brand {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -.01em;
-    flex: 1;
-  }
-  .toolbar-brand span { color: var(--accent); }
-  .icon-btn {
-    width: 38px; height: 38px;
-    border-radius: 8px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    color: var(--text2);
-    display: flex; align-items: center; justify-content: center;
-    transition: background var(--transition), color var(--transition);
-    flex-shrink: 0;
-  }
-  .icon-btn:hover { background: var(--bg2); color: var(--text); }
-  .icon-btn .material-icons-round { font-size: 20px; }
-
-  /* SIDENAV */
-  .sidenav {
-    position: fixed;
-    top: var(--toolbar-h); left: 0; bottom: 0;
-    width: var(--nav-w);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    padding: 16px 10px;
-    transform: translateX(0);
-    transition: transform var(--transition), background var(--transition), border-color var(--transition);
-    z-index: 150;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .sidenav.hidden { transform: translateX(calc(-1 * var(--nav-w))); }
-
-  .nav-section-label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--text3);
-    padding: 8px 10px 4px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    color: var(--text2);
-    font-size: 14px;
-    font-weight: 500;
-    transition: background var(--transition), color var(--transition);
-    border: none;
-    background: transparent;
-    width: 100%;
-    text-align: left;
-  }
-  .nav-item .material-icons-round { font-size: 19px; flex-shrink: 0; }
-  .nav-item:hover { background: var(--bg2); color: var(--text); }
-  .nav-item.active { background: var(--accent-bg); color: var(--accent); }
-
-  /* OVERLAY */
-  .overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.4);
-    z-index: 140;
-    backdrop-filter: blur(2px);
-  }
-  .overlay.visible { display: block; }
-
-  /* MAIN */
-  .main {
-    margin-top: var(--toolbar-h);
-    margin-left: var(--nav-w);
-    flex: 1;
-    transition: margin-left var(--transition);
-    min-height: calc(100vh - var(--toolbar-h));
-  }
-  .main.expanded { margin-left: 0; }
-
-  /* PAGES */
-  .page { display: none; padding: 28px 28px 40px; max-width: 1100px; }
-  .page.active { display: block; }
-
-  .page-header {
-    margin-bottom: 24px;
-  }
-  .page-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -.02em;
-  }
-  .page-subtitle {
-    color: var(--text2);
-    font-size: 14px;
-    margin-top: 4px;
-  }
-
-  /* CARDS */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    transition: background var(--transition), border-color var(--transition);
-  }
-
-  /* FORM ELEMENTS */
-  label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text2);
-    display: block;
-    margin-bottom: 6px;
-  }
-  input[type="text"], input[type="file"] {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface2);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 14px;
-    transition: border-color var(--transition), background var(--transition);
-    outline: none;
-  }
-  input[type="text"]:focus {
-    border-color: var(--accent);
-    background: var(--surface);
-  }
-  input[type="file"] { cursor: pointer; }
-
-  /* BUTTONS */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 9px 18px;
-    border-radius: 8px;
-    border: none;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition);
-    letter-spacing: -.01em;
-  }
-  .btn .material-icons-round { font-size: 18px; }
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232,93,38,.3); }
-  .btn-ghost {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1.5px solid var(--border);
-  }
-  .btn-ghost:hover { background: var(--bg2); }
-  .btn:disabled { opacity: .45; pointer-events: none; }
-
-  /* PDF REGION PAGE */
-  .region-layout {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .pdf-drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color var(--transition), background var(--transition);
-    background: var(--surface);
-  }
-  .pdf-drop-zone:hover, .pdf-drop-zone.drag-over {
-    border-color: var(--accent);
-    background: var(--accent-bg);
-  }
-  .pdf-drop-zone .material-icons-round { font-size: 40px; color: var(--accent); margin-bottom: 10px; }
-  .pdf-drop-zone p { color: var(--text2); font-size: 14px; margin-top: 6px; }
-  .pdf-drop-zone input { display: none; }
-
-  .canvas-wrapper {
-    position: relative;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    cursor: crosshair;
-    box-shadow: var(--shadow);
-    display: none;
-  }
-  .canvas-wrapper canvas { display: block; }
-  #overlay-canvas {
-    position: absolute;
-    top: 0; left: 0;
-    pointer-events: none;
-  }
-  #selection-canvas {
-    position: absolute;
-    top: 0; left: 0;
-  }
-
-  /* SIDEBAR PANEL */
-  .sidebar-panel { display: flex; flex-direction: column; gap: 14px; }
-
-  .region-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .region-hint {
-    font-size: 12px;
-    color: var(--text3);
-    background: var(--surface2);
-    border-radius: 6px;
-    padding: 8px 10px;
-    border-left: 3px solid var(--accent);
-  }
-
-  /* REGIONS LIST */
-  .regions-list { display: flex; flex-direction: column; gap: 8px; }
-  .region-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--surface2);
-    border-radius: 8px;
-    font-size: 13px;
-    border: 1px solid var(--border);
-    transition: border-color var(--transition);
-  }
-  .region-item:hover { border-color: var(--accent); }
-  .region-color-dot {
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .region-name { flex: 1; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .region-coords { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
-  .region-del {
-    background: none; border: none; cursor: pointer;
-    color: var(--text3); display: flex; padding: 2px;
-    border-radius: 4px; transition: color var(--transition), background var(--transition);
-  }
-  .region-del:hover { color: #e53935; background: #fdecea; }
-  .region-del .material-icons-round { font-size: 15px; }
-
-  /* CODE OUTPUT */
-  .code-block {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    background: var(--bg);
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 14px;
-    color: var(--text);
-    white-space: pre;
-    overflow-x: auto;
-    line-height: 1.7;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-  }
-  .code-accent { color: var(--accent); }
-
-  /* ABOUT PAGE */
-  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .about-card { padding: 20px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
-  .about-card .material-icons-round { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
-  .about-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-  .about-card p { font-size: 13px; color: var(--text2); line-height: 1.6; }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    background: var(--text);
-    color: var(--bg);
-    padding: 11px 18px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    box-shadow: var(--shadow-lg);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transform: translateY(80px);
-    opacity: 0;
-    transition: transform .3s cubic-bezier(.4,0,.2,1), opacity .3s;
-    z-index: 999;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast .material-icons-round { font-size: 17px; color: #4caf50; }
-
-  /* DIVIDER */
-  .divider { height: 1px; background: var(--border); margin: 4px 0; }
-
-  /* EMPTY STATE */
-  .empty-state {
-    text-align: center;
-    padding: 24px 12px;
-    color: var(--text3);
-    font-size: 13px;
-  }
-  .empty-state .material-icons-round { font-size: 32px; margin-bottom: 8px; display: block; }
-
-  /* RESPONSIVE */
-  @media (max-width: 768px) {
-    .main { margin-left: 0; }
-    .sidenav { transform: translateX(calc(-1 * var(--nav-w))); }
-    .sidenav.hidden { transform: translateX(calc(-1 * var(--nav-w))); }
-    .sidenav.mobile-open { transform: translateX(0); }
-    .region-layout { grid-template-columns: 1fr; }
-    .about-grid { grid-template-columns: 1fr; }
-    .page { padding: 16px 16px 32px; }
-  }
-
-  .badge {
-    font-size: 11px;
-    font-weight: 600;
-    background: var(--accent-bg);
-    color: var(--accent);
-    padding: 2px 7px;
-    border-radius: 999px;
-  }
-
-  .loading-bar {
-    height: 3px;
-    background: var(--accent);
-    width: 0%;
-    transition: width .3s;
-    border-radius: 2px;
-    margin-bottom: 12px;
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;transition:background var(--transition),color var(--transition);}
+  .toolbar{position:fixed;top:0;left:0;right:0;height:var(--toolbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:200;box-shadow:var(--shadow);}
+  .toolbar-brand{font-size:15px;font-weight:600;color:var(--text);flex:1;}
+  .toolbar-brand span{color:var(--accent);}
+  .icon-btn{width:38px;height:38px;border-radius:8px;border:none;background:transparent;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;transition:background var(--transition),color var(--transition);flex-shrink:0;}
+  .icon-btn:hover{background:var(--bg2);color:var(--text);}
+  .icon-btn .material-icons-round{font-size:20px;}
+  .sidenav{position:fixed;top:var(--toolbar-h);left:0;bottom:0;width:var(--nav-w);background:var(--surface);border-right:1px solid var(--border);padding:16px 10px;transform:translateX(0);transition:transform var(--transition);z-index:150;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+  .sidenav.hidden{transform:translateX(calc(-1 * var(--nav-w)));}
+  .nav-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);padding:8px 10px 4px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:14px;font-weight:500;transition:background var(--transition),color var(--transition);border:none;background:transparent;width:100%;text-align:left;}
+  .nav-item .material-icons-round{font-size:19px;flex-shrink:0;}
+  .nav-item:hover{background:var(--bg2);color:var(--text);}
+  .nav-item.active{background:var(--accent-bg);color:var(--accent);}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:140;backdrop-filter:blur(2px);}
+  .overlay.visible{display:block;}
+  .main{margin-top:var(--toolbar-h);margin-left:var(--nav-w);flex:1;transition:margin-left var(--transition);min-height:calc(100vh - var(--toolbar-h));}
+  .main.expanded{margin-left:0;}
+  .page{display:none;padding:28px 28px 40px;max-width:1100px;}
+  .page.active{display:block;}
+  .page-header{margin-bottom:24px;}
+  .page-title{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.02em;}
+  .page-subtitle{color:var(--text2);font-size:14px;margin-top:4px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);transition:background var(--transition),border-color var(--transition);}
+  label{font-size:13px;font-weight:500;color:var(--text2);display:block;margin-bottom:6px;}
+  input[type="text"],input[type="file"]{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;transition:border-color var(--transition),background var(--transition);outline:none;}
+  input[type="text"]:focus{border-color:var(--accent);background:var(--surface);}
+  input[type="file"]{cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);letter-spacing:-.01em;}
+  .btn .material-icons-round{font-size:18px;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(232,93,38,.3);}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1.5px solid var(--border);}
+  .btn-ghost:hover{background:var(--bg2);}
+  .btn:disabled{opacity:.45;pointer-events:none;}
+  .region-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+  .pdf-drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color var(--transition),background var(--transition);background:var(--surface);}
+  .pdf-drop-zone:hover,.pdf-drop-zone.drag-over{border-color:var(--accent);background:var(--accent-bg);}
+  .pdf-drop-zone .material-icons-round{font-size:40px;color:var(--accent);margin-bottom:10px;}
+  .pdf-drop-zone p{color:var(--text2);font-size:14px;margin-top:6px;}
+  .pdf-drop-zone input{display:none;}
+  /* ZOOM */
+  .zoom-toolbar{display:none;align-items:center;gap:6px;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 10px;box-shadow:var(--shadow);width:fit-content;}
+  .zoom-toolbar.visible{display:flex;}
+  .zoom-btn{width:32px;height:32px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--transition);flex-shrink:0;}
+  .zoom-btn:hover{background:var(--bg2);border-color:var(--accent);color:var(--accent);}
+  .zoom-btn .material-icons-round{font-size:18px;}
+  .zoom-btn:disabled{opacity:.4;pointer-events:none;}
+  .zoom-level{font-size:13px;font-weight:600;color:var(--text);min-width:46px;text-align:center;font-family:'DM Mono',monospace;}
+  .zoom-sep{width:1px;height:20px;background:var(--border);margin:0 2px;}
+  /* CANVAS */
+  .canvas-scroll{overflow:auto;border-radius:var(--radius);border:1.5px solid var(--border);box-shadow:var(--shadow);background:var(--bg2);display:none;max-height:78vh;}
+  .canvas-scroll.visible{display:block;}
+  .canvas-wrapper{position:relative;background:var(--surface);}
+  .canvas-wrapper canvas{display:block;}
+  #overlay-canvas{position:absolute;top:0;left:0;pointer-events:none;}
+  #selection-canvas{position:absolute;top:0;left:0;cursor:crosshair;}
+  .sidebar-panel{display:flex;flex-direction:column;gap:14px;}
+  .region-form{display:flex;flex-direction:column;gap:12px;}
+  .region-hint{font-size:12px;color:var(--text3);background:var(--surface2);border-radius:6px;padding:8px 10px;border-left:3px solid var(--accent);}
+  .regions-list{display:flex;flex-direction:column;gap:8px;}
+  .region-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:13px;border:1px solid var(--border);transition:border-color var(--transition);}
+  .region-item:hover{border-color:var(--accent);}
+  .region-color-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .region-name{flex:1;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .region-coords{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+  .region-del{background:none;border:none;cursor:pointer;color:var(--text3);display:flex;padding:2px;border-radius:4px;transition:color var(--transition),background var(--transition);}
+  .region-del:hover{color:#e53935;background:#fdecea;}
+  .region-del .material-icons-round{font-size:15px;}
+  .code-block{font-family:'DM Mono',monospace;font-size:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:14px;color:var(--text);white-space:pre;overflow-x:auto;line-height:1.7;max-height:200px;overflow-y:auto;display:none;}
+  .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .about-card{padding:20px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);}
+  .about-card .material-icons-round{font-size:28px;color:var(--accent);margin-bottom:10px;}
+  .about-card h3{font-size:15px;font-weight:600;margin-bottom:6px;}
+  .about-card p{font-size:13px;color:var(--text2);line-height:1.6;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);padding:11px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:8px;transform:translateY(80px);opacity:0;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;z-index:999;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  .toast .material-icons-round{font-size:17px;color:#4caf50;}
+  .divider{height:1px;background:var(--border);margin:4px 0;}
+  .empty-state{text-align:center;padding:24px 12px;color:var(--text3);font-size:13px;}
+  .empty-state .material-icons-round{font-size:32px;margin-bottom:8px;display:block;}
+  .badge{font-size:11px;font-weight:600;background:var(--accent-bg);color:var(--accent);padding:2px 7px;border-radius:999px;}
+  .loading-bar{height:3px;background:var(--accent);width:0%;transition:width .3s;border-radius:2px;margin-bottom:12px;}
+  @media(max-width:768px){
+    .main{margin-left:0;}
+    .sidenav{transform:translateX(calc(-1 * var(--nav-w)));}
+    .sidenav.mobile-open{transform:translateX(0);}
+    .region-layout{grid-template-columns:1fr;}
+    .about-grid{grid-template-columns:1fr;}
+    .page{padding:16px 16px 32px;}
   }
 </style>
 </head>
 <body>
 
-<!-- TOOLBAR -->
 <div class="toolbar">
-  <button class="icon-btn" id="menu-btn" title="Menu">
-    <span class="material-icons-round">menu</span>
-  </button>
+  <button class="icon-btn" id="menu-btn"><span class="material-icons-round">menu</span></button>
   <div class="toolbar-brand">Gerador de <span>Região</span> para PDF</div>
-  <button class="icon-btn" id="theme-btn" title="Alternar tema">
-    <span class="material-icons-round" id="theme-icon">dark_mode</span>
-  </button>
+  <button class="icon-btn" id="theme-btn"><span class="material-icons-round" id="theme-icon">dark_mode</span></button>
 </div>
-
-<!-- OVERLAY (mobile) -->
 <div class="overlay" id="overlay"></div>
-
-<!-- SIDENAV -->
 <nav class="sidenav" id="sidenav">
   <div class="nav-section-label">Ferramentas</div>
-  <button class="nav-item active" data-page="page-regioes">
-    <span class="material-icons-round">crop_free</span>
-    Regiões PDF
-  </button>
+  <button class="nav-item active" data-page="page-regioes"><span class="material-icons-round">crop_free</span>Regiões PDF</button>
   <div class="divider"></div>
   <div class="nav-section-label">Informações</div>
-  <button class="nav-item" data-page="page-sobre">
-    <span class="material-icons-round">info</span>
-    Sobre
-  </button>
+  <button class="nav-item" data-page="page-sobre"><span class="material-icons-round">info</span>Sobre</button>
 </nav>
 
-<!-- MAIN CONTENT -->
 <main class="main" id="main">
-
-  <!-- PAGE: REGIÕES -->
   <div class="page active" id="page-regioes">
     <div class="page-header">
       <div class="page-title">Regiões PDF</div>
       <div class="page-subtitle">Selecione um PDF e delimite regiões para gerar código Java.</div>
     </div>
-
     <div class="region-layout">
-      <!-- LEFT: Canvas area -->
       <div>
-        <!-- Drop zone -->
         <div class="pdf-drop-zone" id="drop-zone">
           <input type="file" id="pdf-input" accept="application/pdf">
           <span class="material-icons-round">picture_as_pdf</span>
@@ -480,21 +152,26 @@
           </button>
         </div>
         <div class="loading-bar" id="loading-bar"></div>
-        <!-- Canvas -->
-        <div class="canvas-wrapper" id="canvas-wrapper">
-          <canvas id="pdf-canvas"></canvas>
-          <canvas id="overlay-canvas"></canvas>
-          <canvas id="selection-canvas"></canvas>
+        <div class="zoom-toolbar" id="zoom-toolbar">
+          <button class="zoom-btn" id="zoom-out-btn" title="Diminuir zoom (Ctrl+-)"><span class="material-icons-round">remove</span></button>
+          <div class="zoom-level" id="zoom-level">100%</div>
+          <button class="zoom-btn" id="zoom-in-btn" title="Aumentar zoom (Ctrl++)"><span class="material-icons-round">add</span></button>
+          <div class="zoom-sep"></div>
+          <button class="zoom-btn" id="zoom-fit-btn" title="Ajustar à largura"><span class="material-icons-round">fit_screen</span></button>
+          <button class="zoom-btn" id="zoom-100-btn" title="Zoom 100%"><span class="material-icons-round">crop_free</span></button>
+        </div>
+        <div class="canvas-scroll" id="canvas-scroll">
+          <div class="canvas-wrapper" id="canvas-wrapper">
+            <canvas id="pdf-canvas"></canvas>
+            <canvas id="overlay-canvas"></canvas>
+            <canvas id="selection-canvas"></canvas>
+          </div>
         </div>
       </div>
-
-      <!-- RIGHT: Controls -->
       <div class="sidebar-panel">
-        <!-- Region form -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;">
-            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">add_box</span>
-            Nova Região
+            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">add_box</span>Nova Região
           </div>
           <div class="region-form">
             <div>
@@ -507,732 +184,528 @@
             </div>
           </div>
         </div>
-
-        <!-- Import snippets -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">content_paste</span>
-            Importar Snippets
+            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">content_paste</span>Importar Snippets
           </div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5;">
-            Cole snippets existentes abaixo. Eles serão exibidos no canvas e incluídos no código final.
-          </div>
-          <textarea id="import-textarea" placeholder='stripper.addRegion("nome", new Rectangle(x, y, w, h));' rows="4" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:11.5px;resize:vertical;outline:none;line-height:1.6;transition:border-color .2s,background .2s;"></textarea>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5;">Cole snippets existentes abaixo.</div>
+          <textarea id="import-textarea" placeholder='stripper.addRegion("nome", new Rectangle(x, y, w, h));' rows="4" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:11.5px;resize:vertical;outline:none;line-height:1.6;"></textarea>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn btn-primary" id="import-btn" style="flex:1;justify-content:center;">
-              <span class="material-icons-round">playlist_add</span>Carregar
-            </button>
-            <button class="btn btn-ghost" id="clear-imports-btn" title="Remover regiões importadas">
-              <span class="material-icons-round">layers_clear</span>
-            </button>
+            <button class="btn btn-primary" id="import-btn" style="flex:1;justify-content:center;"><span class="material-icons-round">playlist_add</span>Carregar</button>
+            <button class="btn btn-ghost" id="clear-imports-btn" title="Remover importadas"><span class="material-icons-round">layers_clear</span></button>
           </div>
         </div>
-
-        <!-- Regions list -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;justify-content:space-between;">
-            <span style="display:flex;align-items:center;gap:6px;">
-              <span class="material-icons-round" style="font-size:17px;color:var(--accent);">layers</span>
-              Regiões
-            </span>
+            <span style="display:flex;align-items:center;gap:6px;"><span class="material-icons-round" style="font-size:17px;color:var(--accent);">layers</span>Regiões</span>
             <span class="badge" id="region-count">0</span>
           </div>
           <div class="regions-list" id="regions-list">
-            <div class="empty-state">
-              <span class="material-icons-round">crop_free</span>
-              Nenhuma região criada
-            </div>
+            <div class="empty-state"><span class="material-icons-round">crop_free</span>Nenhuma região criada</div>
           </div>
         </div>
-
-        <!-- Generate code -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;">
-            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">code</span>
-            Código Gerado
+            <span class="material-icons-round" style="font-size:17px;color:var(--accent);">code</span>Código Gerado
           </div>
           <button class="btn btn-primary" id="generate-btn" style="width:100%;justify-content:center;margin-bottom:12px;" disabled>
-            <span class="material-icons-round">auto_awesome</span>
-            Gerar código
+            <span class="material-icons-round">auto_awesome</span>Gerar código
           </button>
           <div class="code-block" id="code-output"></div>
         </div>
-
-        <!-- Clear -->
         <button class="btn btn-ghost" id="clear-btn" style="width:100%;justify-content:center;" disabled>
-          <span class="material-icons-round">delete_sweep</span>
-          Limpar tudo
+          <span class="material-icons-round">delete_sweep</span>Limpar tudo
         </button>
       </div>
     </div>
   </div>
 
-  <!-- PAGE: SOBRE -->
   <div class="page" id="page-sobre">
     <div class="page-header">
       <div class="page-title">Sobre</div>
       <div class="page-subtitle">Informações sobre o aplicativo.</div>
     </div>
     <div class="about-grid">
-      <div class="about-card">
-        <span class="material-icons-round">crop_free</span>
-        <h3>Seleção de Regiões</h3>
-        <p>Carregue qualquer PDF e clique e arraste sobre a primeira página para delimitar regiões de interesse com nome personalizado.</p>
-      </div>
-      <div class="about-card">
-        <span class="material-icons-round">code</span>
-        <h3>Geração de Código</h3>
-        <p>Cada região gera automaticamente um snippet Java no formato <code>stripper.addRegion(...)</code> com coordenadas em pontos (pt).</p>
-      </div>
-      <div class="about-card">
-        <span class="material-icons-round">content_copy</span>
-        <h3>Cópia Automática</h3>
-        <p>Ao clicar em "Gerar código", todo o trecho é copiado para a área de transferência automaticamente.</p>
-      </div>
-      <div class="about-card">
-        <span class="material-icons-round">palette</span>
-        <h3>Visualização</h3>
-        <p>Cada região recebe uma cor distinta e exibe seu nome centralizado diretamente sobre o PDF, facilitando a identificação.</p>
-      </div>
+      <div class="about-card"><span class="material-icons-round">crop_free</span><h3>Seleção de Regiões</h3><p>Carregue qualquer PDF e arraste para delimitar regiões com nome personalizado.</p></div>
+      <div class="about-card"><span class="material-icons-round">code</span><h3>Geração de Código</h3><p>Cada região gera um snippet Java <code>stripper.addRegion(...)</code> com coordenadas em pontos (pt).</p></div>
+      <div class="about-card"><span class="material-icons-round">content_copy</span><h3>Cópia Automática</h3><p>Ao gerar o código, ele é copiado para a área de transferência automaticamente.</p></div>
+      <div class="about-card"><span class="material-icons-round">zoom_in</span><h3>Zoom de Alta Qualidade</h3><p>Use +/−, Ctrl+scroll ou Ctrl+/Ctrl− para ampliar. O PDF é re-renderizado em cada nível, sem perda de qualidade.</p></div>
     </div>
     <div class="card" style="margin-top:20px;">
       <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Exemplo de saída</div>
-      <div class="code-block" style="display:block;">stripper.addRegion("cabecalho", new Rectangle(36.0, 28.0, 523.0, 60.0));
-stripper.addRegion("data", new Rectangle(400.0, 100.0, 160.0, 20.0));
-stripper.addRegion("assinatura", new Rectangle(36.0, 680.0, 200.0, 40.0));</div>
+      <div class="code-block" style="display:block;">stripper.addRegion("cabecalho", new Rectangle(36, 28, 523, 60));
+stripper.addRegion("data", new Rectangle(400, 100, 160, 20));
+stripper.addRegion("assinatura", new Rectangle(36, 680, 200, 40));</div>
     </div>
   </div>
-
 </main>
 
-<!-- TOAST -->
 <div class="toast" id="toast">
   <span class="material-icons-round">check_circle</span>
   <span id="toast-msg">Copiado!</span>
 </div>
 
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  // ── NAV ──
-  const sidenav = document.getElementById('sidenav');
-  const overlay = document.getElementById('overlay');
-  const main    = document.getElementById('main');
-  let navOpen   = window.innerWidth > 768;
+// ── ALL STATE VARIABLES (declared first to avoid TDZ issues) ──
+var navOpen       = window.innerWidth > 768;
+var dark          = false;
+var pdfDoc        = null;
+var pdfPage       = null;
+var pdfViewport   = null;
+var renderTask    = null;
+var regions       = [];
+var importedRegions = [];
+var zoomLevel     = 1.0;
+var baseScale     = 1.0;
+var mode          = 'idle';
+var selStart      = null;
+var selCurrent    = null;
+var activeTarget  = null;
+var dragOffset    = null;
+var resizeHandle  = null;
+var resizeStart   = null;
 
-  function setNav(open) {
-    navOpen = open;
-    if (window.innerWidth <= 768) {
-      sidenav.classList.toggle('mobile-open', open);
-      overlay.classList.toggle('visible', open);
-    } else {
-      sidenav.classList.toggle('hidden', !open);
-      main.classList.toggle('expanded', !open);
-    }
+var COLORS        = ['#e85d26','#2196f3','#4caf50','#9c27b0','#ff9800','#00bcd4','#e91e63','#f44336','#8bc34a','#3f51b5'];
+var IMPORT_COLORS = ['#546e7a','#78909c','#455a64','#607d8b','#90a4ae','#37474f','#80cbc4','#4db6ac','#263238','#b0bec5'];
+var ZOOM_STEPS    = [0.25,0.33,0.5,0.67,0.75,0.9,1.0,1.25,1.5,1.75,2.0,2.5,3.0,4.0];
+var HANDLE_R      = 5;
+var MIN_SIZE      = 10;
+var HANDLES       = [
+  {id:'nw',cursor:'nw-resize',mx:true, my:true, mw:true, mh:true },
+  {id:'n', cursor:'n-resize', mx:false,my:true, mw:false,mh:true },
+  {id:'ne',cursor:'ne-resize',mx:false,my:true, mw:true, mh:true },
+  {id:'e', cursor:'e-resize', mx:false,my:false,mw:true, mh:false},
+  {id:'se',cursor:'se-resize',mx:false,my:false,mw:true, mh:true },
+  {id:'s', cursor:'s-resize', mx:false,my:false,mw:false,mh:true },
+  {id:'sw',cursor:'sw-resize',mx:true, my:false,mw:true, mh:true },
+  {id:'w', cursor:'w-resize', mx:true, my:false,mw:true, mh:false}
+];
+var SNIPPET_RE = /addRegion\(\s*"([^"]+)"\s*,\s*new\s+Rectangle\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g;
+
+// ── ELEMENTS ──
+var sidenav      = document.getElementById('sidenav');
+var overlay      = document.getElementById('overlay');
+var mainEl       = document.getElementById('main');
+var dropZone     = document.getElementById('drop-zone');
+var pdfInput     = document.getElementById('pdf-input');
+var canvasScroll = document.getElementById('canvas-scroll');
+var canvasWrap   = document.getElementById('canvas-wrapper');
+var pdfCanvas    = document.getElementById('pdf-canvas');
+var overlayCanvas= document.getElementById('overlay-canvas');
+var selCanvas    = document.getElementById('selection-canvas');
+var loadingBar   = document.getElementById('loading-bar');
+var ctx          = pdfCanvas.getContext('2d');
+var octx         = overlayCanvas.getContext('2d');
+var sctx         = selCanvas.getContext('2d');
+var zoomToolbar  = document.getElementById('zoom-toolbar');
+var zoomLevelEl  = document.getElementById('zoom-level');
+var zoomInBtn    = document.getElementById('zoom-in-btn');
+var zoomOutBtn   = document.getElementById('zoom-out-btn');
+
+// ── NAV ──
+function setNav(open) {
+  navOpen = open;
+  if (window.innerWidth <= 768) {
+    sidenav.classList.toggle('mobile-open', open);
+    overlay.classList.toggle('visible', open);
+  } else {
+    sidenav.classList.toggle('hidden', !open);
+    mainEl.classList.toggle('expanded', !open);
   }
-  setNav(navOpen);
-
-  document.getElementById('menu-btn').addEventListener('click', () => setNav(!navOpen));
-  overlay.addEventListener('click', () => setNav(false));
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
-      sidenav.classList.remove('mobile-open');
-      overlay.classList.remove('visible');
-      setNav(true);
-    }
+}
+setNav(navOpen);
+document.getElementById('menu-btn').addEventListener('click', function(){ setNav(!navOpen); });
+overlay.addEventListener('click', function(){ setNav(false); });
+window.addEventListener('resize', function(){
+  if (window.innerWidth > 768) { sidenav.classList.remove('mobile-open'); overlay.classList.remove('visible'); setNav(true); }
+});
+document.querySelectorAll('.nav-item[data-page]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.nav-item').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.page).classList.add('active');
+    if (window.innerWidth <= 768) setNav(false);
   });
+});
 
-  document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.page).classList.add('active');
-      if (window.innerWidth <= 768) setNav(false);
-    });
-  });
+// ── THEME ──
+document.getElementById('theme-btn').addEventListener('click', function(){
+  dark = !dark;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-icon').textContent = dark ? 'light_mode' : 'dark_mode';
+});
 
-  // ── THEME ──
-  const themeBtn  = document.getElementById('theme-btn');
-  const themeIcon = document.getElementById('theme-icon');
-  let dark = false;
-  themeBtn.addEventListener('click', () => {
-    dark = !dark;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    themeIcon.textContent = dark ? 'light_mode' : 'dark_mode';
-  });
+// ── TOAST ──
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
 
-  // ── TOAST ──
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    document.getElementById('toast-msg').textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2400);
+// ── ZOOM ──
+function nearestZoom(val, dir) {
+  if (dir > 0) {
+    for (var i = 0; i < ZOOM_STEPS.length; i++) { if (ZOOM_STEPS[i] > val + 0.001) return ZOOM_STEPS[i]; }
+    return val * 1.5;
+  } else {
+    for (var i = ZOOM_STEPS.length - 1; i >= 0; i--) { if (ZOOM_STEPS[i] < val - 0.001) return ZOOM_STEPS[i]; }
+    return 0.25;
   }
-
-  // ── PDF & CANVAS ──
-  const dropZone     = document.getElementById('drop-zone');
-  const pdfInput     = document.getElementById('pdf-input');
-  const canvasWrap   = document.getElementById('canvas-wrapper');
-  const pdfCanvas    = document.getElementById('pdf-canvas');
-  const overlayCanvas= document.getElementById('overlay-canvas');
-  const selCanvas    = document.getElementById('selection-canvas');
-  const loadingBar   = document.getElementById('loading-bar');
-  const ctx          = pdfCanvas.getContext('2d');
-  const octx         = overlayCanvas.getContext('2d');
-  const sctx         = selCanvas.getContext('2d');
-
-  let pdfPage         = null;
-  let pdfViewport     = null;
-  let regions         = [];   // manually drawn
-  let importedRegions = [];   // parsed from pasted snippets
-
-  // Vivid colors for new regions
-  const COLORS = [
-    '#e85d26','#2196f3','#4caf50','#9c27b0','#ff9800',
-    '#00bcd4','#e91e63','#f44336','#8bc34a','#3f51b5'
-  ];
-  // Muted blue-grey palette for imported regions
-  const IMPORT_COLORS = [
-    '#546e7a','#78909c','#455a64','#607d8b','#90a4ae',
-    '#37474f','#80cbc4','#4db6ac','#263238','#b0bec5'
-  ];
-
-  // ── DROP ZONE ──
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') loadPDF(file);
+}
+function applyZoom(nz) {
+  if (!pdfPage) return;
+  nz = Math.max(0.1, nz);
+  if (Math.abs(nz - zoomLevel) < 0.001) return;
+  var s = canvasScroll;
+  var fx = s.scrollWidth  > 0 ? (s.scrollLeft + s.clientWidth/2)  / s.scrollWidth  : 0.5;
+  var fy = s.scrollHeight > 0 ? (s.scrollTop  + s.clientHeight/2) / s.scrollHeight : 0.5;
+  zoomLevel = nz;
+  renderPage().then(function(){
+    s.scrollLeft = fx * s.scrollWidth  - s.clientWidth/2;
+    s.scrollTop  = fy * s.scrollHeight - s.clientHeight/2;
   });
-  pdfInput.addEventListener('change', e => {
-    if (e.target.files[0]) loadPDF(e.target.files[0]);
-  });
-  dropZone.addEventListener('click', e => {
-    if (!e.target.closest('button')) pdfInput.click();
-  });
+}
+zoomInBtn.addEventListener('click',  function(){ applyZoom(nearestZoom(zoomLevel, +1)); });
+zoomOutBtn.addEventListener('click', function(){ applyZoom(nearestZoom(zoomLevel, -1)); });
+document.getElementById('zoom-fit-btn').addEventListener('click', function(){ zoomLevel = 1.0; renderPage(); });
+document.getElementById('zoom-100-btn').addEventListener('click', function(){ applyZoom(1.0 / baseScale); });
+canvasScroll.addEventListener('wheel', function(e){
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  applyZoom(e.deltaY < 0 ? nearestZoom(zoomLevel, +1) : nearestZoom(zoomLevel, -1));
+}, { passive: false });
+document.addEventListener('keydown', function(e){
+  if (!pdfPage) return;
+  if ((e.key==='+' || e.key==='=') && (e.ctrlKey||e.metaKey)) { e.preventDefault(); applyZoom(nearestZoom(zoomLevel,+1)); }
+  if (e.key==='-' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); applyZoom(nearestZoom(zoomLevel,-1)); }
+  if (e.key==='0' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); applyZoom(1.0); }
+});
 
-  async function loadPDF(file) {
-    loadingBar.style.width = '20%';
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const typedarray = new Uint8Array(ev.target.result);
-      loadingBar.style.width = '50%';
-      const pdf = await pdfjsLib.getDocument(typedarray).promise;
-      pdfPage = await pdf.getPage(1);
-      loadingBar.style.width = '80%';
+// ── PDF LOAD ──
+dropZone.addEventListener('dragover', function(e){ e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function(){ dropZone.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function(e){
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  var f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadPDF(f);
+});
+pdfInput.addEventListener('change', function(e){ if (e.target.files[0]) loadPDF(e.target.files[0]); });
+dropZone.addEventListener('click', function(e){ if (!e.target.closest('button')) pdfInput.click(); });
 
-      const containerWidth = canvasWrap.parentElement.offsetWidth - 2;
-      const unscaled = pdfPage.getViewport({ scale: 1 });
-      const scale = containerWidth / unscaled.width;
-      pdfViewport = pdfPage.getViewport({ scale });
-
-      pdfCanvas.width  = pdfViewport.width;
-      pdfCanvas.height = pdfViewport.height;
-      overlayCanvas.width  = pdfViewport.width;
-      overlayCanvas.height = pdfViewport.height;
-      selCanvas.width  = pdfViewport.width;
-      selCanvas.height = pdfViewport.height;
-
-      await pdfPage.render({ canvasContext: ctx, viewport: pdfViewport }).promise;
-
-      dropZone.style.display = 'none';
-      canvasWrap.style.display = 'block';
-      loadingBar.style.width = '100%';
-      setTimeout(() => loadingBar.style.width = '0%', 500);
-
+function loadPDF(file) {
+  loadingBar.style.width = '20%';
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var arr = new Uint8Array(ev.target.result);
+    loadingBar.style.width = '50%';
+    pdfjsLib.getDocument(arr).promise.then(function(doc){
+      pdfDoc = doc;
+      return doc.getPage(1);
+    }).then(function(page){
+      pdfPage = page;
+      loadingBar.style.width = '70%';
+      var cw = canvasScroll.parentElement.offsetWidth - 4;
+      var unscaled = pdfPage.getViewport({ scale: 1 });
+      baseScale = cw / unscaled.width;
+      zoomLevel = 1.0;
       regions = [];
-      // Re-project imported regions onto new scale
-      if (importedRegions.length) projectImported();
-      redrawRegions();
-      updateUI();
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-  // ── IMPORT SNIPPETS ──
-  // Regex: stripper.addRegion("name", new Rectangle(x, y, w, h));
-  const SNIPPET_RE = /addRegion\(\s*"([^"]+)"\s*,\s*new\s+Rectangle\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g;
-
-  document.getElementById('import-btn').addEventListener('click', () => {
-    const raw = document.getElementById('import-textarea').value;
-    const parsed = [];
-    let m;
-    SNIPPET_RE.lastIndex = 0;
-    while ((m = SNIPPET_RE.exec(raw)) !== null) {
-      parsed.push({
-        name: m[1],
-        ptX: parseInt(m[2]), ptY: parseInt(m[3]),
-        ptW: parseInt(m[4]), ptH: parseInt(m[5])
+      importedRegions = [];
+      dropZone.style.display = 'none';
+      canvasScroll.classList.add('visible');
+      zoomToolbar.classList.add('visible');
+      renderPage().then(function(){
+        loadingBar.style.width = '100%';
+        setTimeout(function(){ loadingBar.style.width = '0%'; }, 500);
+        updateUI();
       });
-    }
-    if (!parsed.length) {
-      showToast('Nenhum snippet válido encontrado.');
-      return;
-    }
-    importedRegions = parsed;
-    if (pdfViewport) projectImported();
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── RENDER PAGE (re-renders PDF at current zoom — no quality loss) ──
+function renderPage() {
+  if (!pdfPage) return Promise.resolve();
+  var scale = baseScale * zoomLevel;
+  pdfViewport = pdfPage.getViewport({ scale: scale });
+  var W = Math.floor(pdfViewport.width);
+  var H = Math.floor(pdfViewport.height);
+  pdfCanvas.width = W;    pdfCanvas.height = H;
+  overlayCanvas.width = W; overlayCanvas.height = H;
+  selCanvas.width = W;    selCanvas.height = H;
+  canvasWrap.style.width  = W + 'px';
+  canvasWrap.style.height = H + 'px';
+  if (renderTask) { try { renderTask.cancel(); } catch(e){} renderTask = null; }
+  ctx.clearRect(0, 0, W, H);
+  renderTask = pdfPage.render({ canvasContext: ctx, viewport: pdfViewport });
+  return renderTask.promise.then(function(){
+    renderTask = null;
+    reprojectAll();
     redrawRegions();
-    updateUI();
-    showToast(`${parsed.length} região(ões) importada(s)!`);
+    zoomLevelEl.textContent = Math.round(zoomLevel * 100) + '%';
+    zoomOutBtn.disabled = zoomLevel <= 0.1;
+  }).catch(function(e){
+    if (e && e.name !== 'RenderingCancelledException') console.error(e);
   });
+}
 
-  // Convert pt coords → canvas pixel coords using current scale
-  function projectImported() {
-    const scale = pdfViewport.scale;
-    importedRegions = importedRegions.map((r, i) => ({
-      ...r,
-      color: IMPORT_COLORS[i % IMPORT_COLORS.length],
-      x: r.ptX * scale,
-      y: r.ptY * scale,
-      w: r.ptW * scale,
-      h: r.ptH * scale,
-    }));
+function reprojectAll() {
+  var s = pdfViewport.scale;
+  regions.forEach(function(r){ r.x=r.ptX*s; r.y=r.ptY*s; r.w=r.ptW*s; r.h=r.ptH*s; });
+  importedRegions.forEach(function(r){ r.x=r.ptX*s; r.y=r.ptY*s; r.w=r.ptW*s; r.h=r.ptH*s; });
+}
+
+// ── IMPORT SNIPPETS ──
+document.getElementById('import-btn').addEventListener('click', function(){
+  var raw = document.getElementById('import-textarea').value;
+  var parsed = []; var m;
+  SNIPPET_RE.lastIndex = 0;
+  while ((m = SNIPPET_RE.exec(raw)) !== null) {
+    var idx = importedRegions.length + parsed.length;
+    parsed.push({ name:m[1], ptX:+m[2], ptY:+m[3], ptW:+m[4], ptH:+m[5],
+                  color:IMPORT_COLORS[idx % IMPORT_COLORS.length], x:0,y:0,w:0,h:0 });
   }
+  if (!parsed.length) { showToast('Nenhum snippet válido encontrado.'); return; }
+  importedRegions = importedRegions.concat(parsed);
+  if (pdfViewport) reprojectAll();
+  redrawRegions(); updateUI();
+  showToast(parsed.length + ' região(ões) importada(s)!');
+});
+document.getElementById('clear-imports-btn').addEventListener('click', function(){
+  importedRegions = [];
+  document.getElementById('import-textarea').value = '';
+  redrawRegions(); updateUI();
+  showToast('Regiões importadas removidas.');
+});
 
-  document.getElementById('clear-imports-btn').addEventListener('click', () => {
-    importedRegions = [];
-    document.getElementById('import-textarea').value = '';
-    redrawRegions();
-    updateUI();
-    showToast('Regiões importadas removidas.');
-  });
-
-  // ── INTERACTION: DRAW + DRAG ──
-
-  // Interaction state
-  // ── INTERACTION: DRAW · DRAG · RESIZE ──
-
-  const HANDLE_R  = 1;   // handle hit radius (px)
-  const EDGE_W    = 6;   // edge hit zone half-width (px)
-  const MIN_SIZE  = 10;  // minimum region size (px)
-
-  // handle names → CSS cursor + which edges move
-  const HANDLES = [
-    { id: 'nw', cursor: 'nw-resize', mx: true,  my: true,  mw: true,  mh: true  },
-    { id: 'n',  cursor: 'n-resize',  mx: false, my: true,  mw: false, mh: true  },
-    { id: 'ne', cursor: 'ne-resize', mx: false, my: true,  mw: true,  mh: true  },
-    { id: 'e',  cursor: 'e-resize',  mx: false, my: false, mw: true,  mh: false },
-    { id: 'se', cursor: 'se-resize', mx: false, my: false, mw: true,  mh: true  },
-    { id: 's',  cursor: 's-resize',  mx: false, my: false, mw: false, mh: true  },
-    { id: 'sw', cursor: 'sw-resize', mx: true,  my: false, mw: true,  mh: true  },
-    { id: 'w',  cursor: 'w-resize',  mx: true,  my: false, mw: true,  mh: false },
-  ];
-
-  let mode        = 'idle';  // 'idle'|'drawing'|'dragging'|'resizing'
-  let selStart    = null;
-  let selCurrent  = null;
-  let activeTarget = null;   // { list, index } for drag & resize
-  let dragOffset  = null;
-  let resizeHandle = null;   // handle descriptor from HANDLES
-  let resizeStart  = null;   // snapshot of { x, y, w, h } when resize begins
-
-  // ── helpers ──
-
-  function getPos(e) {
-    const rect = selCanvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: (clientX - rect.left) * (selCanvas.width  / rect.width),
-      y: (clientY - rect.top)  * (selCanvas.height / rect.height)
-    };
-  }
-
-  function getList(target) {
-    return target.list === 'regions' ? regions : importedRegions;
-  }
-
-  // Returns handle descriptor + region hit for point p, or null
-  function handleHitTest(p) {
-    const allSets = [
-      { list: 'regions',  arr: regions },
-      { list: 'imported', arr: importedRegions },
-    ];
-    for (const { list, arr } of allSets) {
-      for (let i = arr.length - 1; i >= 0; i--) {
-        const r = arr[i];
-        const cx = r.x, cy = r.y, cw = r.w, ch = r.h;
-        const pts = {
-          nw: [cx,      cy     ],
-          n:  [cx+cw/2, cy     ],
-          ne: [cx+cw,   cy     ],
-          e:  [cx+cw,   cy+ch/2],
-          se: [cx+cw,   cy+ch  ],
-          s:  [cx+cw/2, cy+ch  ],
-          sw: [cx,      cy+ch  ],
-          w:  [cx,      cy+ch/2],
-        };
-        for (const h of HANDLES) {
-          const [hx, hy] = pts[h.id];
-          if (Math.abs(p.x - hx) <= HANDLE_R + 2 && Math.abs(p.y - hy) <= HANDLE_R + 2) {
-            return { handle: h, list, index: i, region: r };
-          }
-        }
+// ── HIT TESTS ──
+function handleHitTest(p) {
+  var sets = [{list:'regions',arr:regions},{list:'imported',arr:importedRegions}];
+  for (var s = 0; s < sets.length; s++) {
+    var arr = sets[s].arr; var list = sets[s].list;
+    for (var i = arr.length-1; i >= 0; i--) {
+      var r = arr[i];
+      var pts = {nw:[r.x,r.y],n:[r.x+r.w/2,r.y],ne:[r.x+r.w,r.y],e:[r.x+r.w,r.y+r.h/2],
+                 se:[r.x+r.w,r.y+r.h],s:[r.x+r.w/2,r.y+r.h],sw:[r.x,r.y+r.h],w:[r.x,r.y+r.h/2]};
+      for (var h = 0; h < HANDLES.length; h++) {
+        var hx = pts[HANDLES[h].id][0], hy = pts[HANDLES[h].id][1];
+        if (Math.abs(p.x-hx) <= HANDLE_R+3 && Math.abs(p.y-hy) <= HANDLE_R+3)
+          return { handle:HANDLES[h], list:list, index:i, region:r };
       }
     }
-    return null;
   }
-
-  // Returns topmost region interior hit, or null
-  function regionHitTest(p) {
-    for (let i = regions.length - 1; i >= 0; i--) {
-      const r = regions[i];
-      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
-        return { list: 'regions', index: i, region: r };
-    }
-    for (let i = importedRegions.length - 1; i >= 0; i--) {
-      const r = importedRegions[i];
-      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
-        return { list: 'imported', index: i, region: r };
-    }
-    return null;
+  return null;
+}
+function regionHitTest(p) {
+  for (var i = regions.length-1; i >= 0; i--) {
+    var r = regions[i];
+    if (p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h) return {list:'regions',index:i,region:r};
   }
-
-  function updatePt(r) {
-    const scale = pdfViewport.scale;
-    r.ptX = Math.round(r.x / scale);
-    r.ptY = Math.round(r.y / scale);
-    r.ptW = Math.round(r.w / scale);
-    r.ptH = Math.round(r.h / scale);
+  for (var i = importedRegions.length-1; i >= 0; i--) {
+    var r = importedRegions[i];
+    if (p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h) return {list:'imported',index:i,region:r};
   }
+  return null;
+}
+function getList(target) { return target.list === 'regions' ? regions : importedRegions; }
 
-  // ── cursor on hover ──
-  selCanvas.addEventListener('mousemove', e => {
-    if (mode !== 'idle') return;
-    const p = getPos(e);
-    const hh = handleHitTest(p);
-    if (hh) { selCanvas.style.cursor = hh.handle.cursor; return; }
-    const rh = regionHitTest(p);
-    if (rh) { selCanvas.style.cursor = 'move'; return; }
-    selCanvas.style.cursor = document.getElementById('region-name').value.trim() ? 'crosshair' : 'default';
-  });
+function getPos(e) {
+  var rect = selCanvas.getBoundingClientRect();
+  var cx = e.touches ? e.touches[0].clientX : e.clientX;
+  var cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-rect.left)*(selCanvas.width/rect.width), y:(cy-rect.top)*(selCanvas.height/rect.height) };
+}
+function updatePt(r) {
+  var s = pdfViewport.scale;
+  r.ptX=Math.round(r.x/s); r.ptY=Math.round(r.y/s); r.ptW=Math.round(r.w/s); r.ptH=Math.round(r.h/s);
+}
 
-  // ── pointer events ──
-  selCanvas.addEventListener('mousedown',  onPointerDown);
-  selCanvas.addEventListener('touchstart', onPointerDown, { passive: true });
-  selCanvas.addEventListener('mousemove',  onPointerMove);
-  selCanvas.addEventListener('touchmove',  onPointerMove, { passive: true });
-  document.addEventListener('mouseup',  onPointerUp);
-  document.addEventListener('touchend', onPointerUp);
+// ── POINTER EVENTS ──
+selCanvas.addEventListener('mousemove', function(e){
+  if (mode !== 'idle') return;
+  var p = getPos(e);
+  var hh = handleHitTest(p);
+  if (hh) { selCanvas.style.cursor = hh.handle.cursor; return; }
+  var rh = regionHitTest(p);
+  if (rh) { selCanvas.style.cursor = 'move'; return; }
+  selCanvas.style.cursor = document.getElementById('region-name').value.trim() ? 'crosshair' : 'default';
+});
+selCanvas.addEventListener('mousedown',  onPointerDown);
+selCanvas.addEventListener('touchstart', onPointerDown, {passive:true});
+selCanvas.addEventListener('mousemove',  onPointerMove);
+selCanvas.addEventListener('touchmove',  onPointerMove, {passive:true});
+document.addEventListener('mouseup',  onPointerUp);
+document.addEventListener('touchend', onPointerUp);
 
-  function onPointerDown(e) {
-    if (!pdfPage) return;
-    const p = getPos(e);
-
-    // 1. Resize handle?
-    const hh = handleHitTest(p);
-    if (hh) {
-      mode = 'resizing';
-      activeTarget  = { list: hh.list, index: hh.index };
-      resizeHandle  = hh.handle;
-      resizeStart   = { x: hh.region.x, y: hh.region.y, w: hh.region.w, h: hh.region.h };
-      selStart      = p;
-      selCanvas.style.cursor = hh.handle.cursor;
-      return;
-    }
-
-    // 2. Region interior → drag
-    const rh = regionHitTest(p);
-    if (rh) {
-      mode = 'dragging';
-      activeTarget = { list: rh.list, index: rh.index };
-      dragOffset   = { dx: p.x - rh.region.x, dy: p.y - rh.region.y };
-      selCanvas.style.cursor = 'grabbing';
-      return;
-    }
-
-    // 3. Empty → draw
-    const name = document.getElementById('region-name').value.trim();
-    if (!name) {
-      document.getElementById('region-name').focus();
-      document.getElementById('region-name').style.borderColor = 'var(--accent)';
-      setTimeout(() => document.getElementById('region-name').style.borderColor = '', 1200);
-      return;
-    }
-    mode = 'drawing';
-    selStart   = p;
-    selCurrent = { ...p };
+function onPointerDown(e) {
+  if (!pdfPage) return;
+  var p = getPos(e);
+  var hh = handleHitTest(p);
+  if (hh) {
+    mode='resizing'; activeTarget={list:hh.list,index:hh.index};
+    resizeHandle=hh.handle;
+    resizeStart={x:hh.region.x,y:hh.region.y,w:hh.region.w,h:hh.region.h};
+    selStart=p; selCanvas.style.cursor=hh.handle.cursor; return;
   }
-
-  function onPointerMove(e) {
-    const p = getPos(e);
-
-    if (mode === 'drawing') {
-      selCurrent = p;
-      drawSelectionPreview();
-      return;
-    }
-
-    if (mode === 'dragging' && activeTarget) {
-      const list = getList(activeTarget);
-      const r    = list[activeTarget.index];
-      let newX = p.x - dragOffset.dx;
-      let newY = p.y - dragOffset.dy;
-      newX = Math.max(0, Math.min(newX, overlayCanvas.width  - r.w));
-      newY = Math.max(0, Math.min(newY, overlayCanvas.height - r.h));
-      r.x = newX; r.y = newY;
-      updatePt(r);
-      redrawRegions();
-      updateUI();
-      return;
-    }
-
-    if (mode === 'resizing' && activeTarget && resizeHandle) {
-      const list = getList(activeTarget);
-      const r    = list[activeTarget.index];
-      const dx   = p.x - selStart.x;
-      const dy   = p.y - selStart.y;
-      const s    = resizeStart;
-      const h    = resizeHandle;
-
-      let nx = s.x, ny = s.y, nw = s.w, nh = s.h;
-
-      // West edge moves left border
-      if (h.mx) { nx = s.x + dx; nw = s.w - dx; }
-      // East edge moves right border
-      else if (h.mw) { nw = s.w + dx; }
-
-      // North edge moves top border
-      if (h.my) { ny = s.y + dy; nh = s.h - dy; }
-      // South edge moves bottom border
-      else if (h.mh) { nh = s.h + dy; }
-
-      // Enforce minimums and canvas bounds
-      if (nw < MIN_SIZE) { if (h.mx) nx = s.x + s.w - MIN_SIZE; nw = MIN_SIZE; }
-      if (nh < MIN_SIZE) { if (h.my) ny = s.y + s.h - MIN_SIZE; nh = MIN_SIZE; }
-      nx = Math.max(0, nx); ny = Math.max(0, ny);
-      if (nx + nw > overlayCanvas.width)  nw = overlayCanvas.width  - nx;
-      if (ny + nh > overlayCanvas.height) nh = overlayCanvas.height - ny;
-
-      r.x = nx; r.y = ny; r.w = nw; r.h = nh;
-      updatePt(r);
-      redrawRegions();
-      updateUI();
-    }
+  var rh = regionHitTest(p);
+  if (rh) {
+    mode='dragging'; activeTarget={list:rh.list,index:rh.index};
+    dragOffset={dx:p.x-rh.region.x,dy:p.y-rh.region.y};
+    selCanvas.style.cursor='grabbing'; return;
   }
-
-  function onPointerUp(e) {
-    if (mode === 'drawing') {
-      mode = 'idle';
-      sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
-      if (!selCurrent) return;
-      const x = Math.min(selStart.x, selCurrent.x);
-      const y = Math.min(selStart.y, selCurrent.y);
-      const w = Math.abs(selCurrent.x - selStart.x);
-      const h = Math.abs(selCurrent.y - selStart.y);
-      if (w < 5 || h < 5) return;
-
-      const name  = document.getElementById('region-name').value.trim();
-      const color = COLORS[regions.length % COLORS.length];
-      const scale = pdfViewport.scale;
-      regions.push({
-        name, color, x, y, w, h,
-        ptX: Math.round(x / scale), ptY: Math.round(y / scale),
-        ptW: Math.round(w / scale), ptH: Math.round(h / scale),
-      });
-      document.getElementById('region-name').value = '';
-      redrawRegions();
-      updateUI();
-    }
-
-    if (mode === 'dragging' || mode === 'resizing') {
-      mode = 'idle';
-      activeTarget = null; dragOffset = null;
-      resizeHandle = null; resizeStart = null; selStart = null;
-      selCanvas.style.cursor = 'default';
-    }
+  var name = document.getElementById('region-name').value.trim();
+  if (!name) {
+    document.getElementById('region-name').focus();
+    document.getElementById('region-name').style.borderColor='var(--accent)';
+    setTimeout(function(){ document.getElementById('region-name').style.borderColor=''; }, 1200);
+    return;
   }
+  mode='drawing'; selStart=p; selCurrent={x:p.x,y:p.y};
+}
 
-  // ── draw helpers ──
-
-  function drawSelectionPreview() {
-    sctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
-    if (!selStart || !selCurrent) return;
-    const x = Math.min(selStart.x, selCurrent.x);
-    const y = Math.min(selStart.y, selCurrent.y);
-    const w = Math.abs(selCurrent.x - selStart.x);
-    const h = Math.abs(selCurrent.y - selStart.y);
-    sctx.strokeStyle = '#e85d26';
-    sctx.lineWidth = 2;
-    sctx.setLineDash([6, 3]);
-    sctx.strokeRect(x, y, w, h);
-    sctx.fillStyle = 'rgba(232,93,38,0.10)';
-    sctx.fillRect(x, y, w, h);
-    sctx.setLineDash([]);
+function onPointerMove(e) {
+  var p = getPos(e);
+  if (mode==='drawing') { selCurrent=p; drawSelectionPreview(); return; }
+  if (mode==='dragging' && activeTarget) {
+    var list=getList(activeTarget), r=list[activeTarget.index];
+    r.x=Math.max(0,Math.min(p.x-dragOffset.dx, overlayCanvas.width-r.w));
+    r.y=Math.max(0,Math.min(p.y-dragOffset.dy, overlayCanvas.height-r.h));
+    updatePt(r); redrawRegions(); updateUI(); return;
   }
-
-  function drawHandles(r, color) {
-    const cx = r.x, cy = r.y, cw = r.w, ch = r.h;
-    const pts = [
-      [cx,      cy     ], [cx+cw/2, cy     ], [cx+cw,   cy     ],
-      [cx+cw,   cy+ch/2],
-      [cx+cw,   cy+ch  ], [cx+cw/2, cy+ch  ], [cx,      cy+ch  ],
-      [cx,      cy+ch/2],
-    ];
-    pts.forEach(([hx, hy]) => {
-      octx.beginPath();
-      octx.arc(hx, hy, HANDLE_R, 0, Math.PI * 2);
-      octx.fillStyle = '#fff';
-      octx.fill();
-      octx.strokeStyle = color;
-      octx.lineWidth = 2;
-      octx.stroke();
-    });
+  if (mode==='resizing' && activeTarget && resizeHandle) {
+    var list=getList(activeTarget), r=list[activeTarget.index];
+    var dx=p.x-selStart.x, dy=p.y-selStart.y, s=resizeStart, h=resizeHandle;
+    var nx=s.x,ny=s.y,nw=s.w,nh=s.h;
+    if(h.mx){nx=s.x+dx;nw=s.w-dx;} else if(h.mw){nw=s.w+dx;}
+    if(h.my){ny=s.y+dy;nh=s.h-dy;} else if(h.mh){nh=s.h+dy;}
+    if(nw<MIN_SIZE){if(h.mx)nx=s.x+s.w-MIN_SIZE;nw=MIN_SIZE;}
+    if(nh<MIN_SIZE){if(h.my)ny=s.y+s.h-MIN_SIZE;nh=MIN_SIZE;}
+    nx=Math.max(0,nx); ny=Math.max(0,ny);
+    if(nx+nw>overlayCanvas.width)  nw=overlayCanvas.width-nx;
+    if(ny+nh>overlayCanvas.height) nh=overlayCanvas.height-ny;
+    r.x=nx;r.y=ny;r.w=nw;r.h=nh; updatePt(r); redrawRegions(); updateUI();
   }
+}
 
-  // ── DRAW ──
-  function drawRegion(r, imported) {
-    const rgb = hexToRgb(r.color);
-    octx.fillStyle = `rgba(${rgb},${imported ? 0.12 : 0.18})`;
-    octx.fillRect(r.x, r.y, r.w, r.h);
-    octx.strokeStyle = r.color;
-    octx.lineWidth = imported ? 1.5 : 2;
-    if (imported) octx.setLineDash([6, 4]);
-    octx.strokeRect(r.x, r.y, r.w, r.h);
-    octx.setLineDash([]);
-    // label
-    const fsize = Math.min(13, Math.max(8, r.h * 0.35));
-    octx.font = `${imported ? '500' : '600'} ${fsize}px DM Sans, sans-serif`;
-    octx.fillStyle = r.color;
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    const label = (imported ? '↩ ' : '') + (r.name.length > 16 ? r.name.slice(0,14)+'…' : r.name);
-    octx.fillText(label, r.x + r.w / 2, r.y + r.h / 2);
-    // resize handles
-    drawHandles(r, r.color);
-  }
-
-  function redrawRegions() {
-    octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    // Draw imported first (behind)
-    importedRegions.forEach(r => drawRegion(r, true));
-    // Draw new regions on top
-    regions.forEach(r => drawRegion(r, false));
-  }
-
-  function hexToRgb(hex) {
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    return `${r},${g},${b}`;
-  }
-
-  // ── UI ──
-  function updateUI() {
-    const list   = document.getElementById('regions-list');
-    const count  = document.getElementById('region-count');
-    const genBtn = document.getElementById('generate-btn');
-    const clrBtn = document.getElementById('clear-btn');
-
-    const total = regions.length + importedRegions.length;
-    count.textContent = total;
-    genBtn.disabled = total === 0;
-    clrBtn.disabled = total === 0 && !pdfPage;
-
-    let html = '';
-
-    if (importedRegions.length) {
-      html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:4px 2px 2px;">Importadas</div>`;
-      html += importedRegions.map((r, i) => `
-        <div class="region-item" style="opacity:.85;">
-          <div class="region-color-dot" style="border:1.5px dashed ${r.color};background:transparent;"></div>
-          <div class="region-name" title="${r.name}">${r.name}</div>
-          <div class="region-coords" title="x, y, largura, altura">${r.ptX},${r.ptY} · ${r.ptW}×${r.ptH}</div>
-          <button class="region-del" onclick="deleteImported(${i})" title="Remover">
-            <span class="material-icons-round">close</span>
-          </button>
-        </div>
-      `).join('');
-    }
-
-    if (regions.length) {
-      if (importedRegions.length) html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 2px 2px;">Novas</div>`;
-      html += regions.map((r, i) => `
-        <div class="region-item">
-          <div class="region-color-dot" style="background:${r.color}"></div>
-          <div class="region-name" title="${r.name}">${r.name}</div>
-          <div class="region-coords" title="x, y, largura, altura">${r.ptX},${r.ptY} · ${r.ptW}×${r.ptH}</div>
-          <button class="region-del" onclick="deleteRegion(${i})" title="Remover">
-            <span class="material-icons-round">close</span>
-          </button>
-        </div>
-      `).join('');
-    }
-
-    if (!html) {
-      html = `<div class="empty-state"><span class="material-icons-round">crop_free</span>Nenhuma região criada</div>`;
-    }
-
-    list.innerHTML = html;
-  }
-
-  function deleteRegion(i) {
-    regions.splice(i, 1);
-    redrawRegions();
-    updateUI();
-    document.getElementById('code-output').style.display = 'none';
-  }
-
-  function deleteImported(i) {
-    importedRegions.splice(i, 1);
-    redrawRegions();
-    updateUI();
-    document.getElementById('code-output').style.display = 'none';
-  }
-
-  // ── GENERATE CODE ──
-  document.getElementById('generate-btn').addEventListener('click', () => {
-    const total = regions.length + importedRegions.length;
-    if (total === 0) return;
-
-    // Imported first, then new
-    const toSnippet = r =>
-      `stripper.addRegion("${r.name}", new Rectangle(${r.ptX}, ${r.ptY}, ${r.ptW}, ${r.ptH}));`;
-
-    const parts = [];
-    if (importedRegions.length) {
-      parts.push('// Regiões importadas');
-      parts.push(...importedRegions.map(toSnippet));
-    }
-    if (regions.length) {
-      if (importedRegions.length) parts.push('');
-      parts.push('// Novas regiões');
-      parts.push(...regions.map(toSnippet));
-    }
-    const lines = parts.join('\n');
-
-    const out = document.getElementById('code-output');
-    out.style.display = 'block';
-    out.textContent = lines;
-
-    navigator.clipboard.writeText(lines).then(() => {
-      showToast('Código copiado para a área de transferência!');
-    }).catch(() => {
-      showToast('Código gerado! Selecione e copie manualmente.');
-    });
-  });
-
-  // ── CLEAR ALL ──
-  document.getElementById('clear-btn').addEventListener('click', () => {
-    regions = [];
-    importedRegions = [];
-    pdfPage = null;
-    pdfViewport = null;
-    ctx.clearRect(0,0,pdfCanvas.width,pdfCanvas.height);
-    octx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
-    sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
-    canvasWrap.style.display = 'none';
-    dropZone.style.display = '';
-    pdfInput.value = '';
-    document.getElementById('import-textarea').value = '';
-    document.getElementById('code-output').style.display = 'none';
-    document.getElementById('code-output').textContent = '';
+function onPointerUp() {
+  if (mode==='drawing') {
+    mode='idle'; sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
+    if (!selCurrent) return;
+    var x=Math.min(selStart.x,selCurrent.x), y=Math.min(selStart.y,selCurrent.y);
+    var w=Math.abs(selCurrent.x-selStart.x), h=Math.abs(selCurrent.y-selStart.y);
+    if (w<5 || h<5) return;
+    var name=document.getElementById('region-name').value.trim();
+    var color=COLORS[regions.length % COLORS.length];
+    var sc=pdfViewport.scale;
+    regions.push({name:name,color:color,x:x,y:y,w:w,h:h,
+                  ptX:Math.round(x/sc),ptY:Math.round(y/sc),ptW:Math.round(w/sc),ptH:Math.round(h/sc)});
     document.getElementById('region-name').value = '';
-    updateUI();
+    redrawRegions(); updateUI();
+  }
+  if (mode==='dragging' || mode==='resizing') {
+    mode='idle'; activeTarget=null; dragOffset=null;
+    resizeHandle=null; resizeStart=null; selStart=null;
+    selCanvas.style.cursor='default';
+  }
+}
+
+// ── DRAW ──
+function drawSelectionPreview() {
+  sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
+  if (!selStart||!selCurrent) return;
+  var x=Math.min(selStart.x,selCurrent.x), y=Math.min(selStart.y,selCurrent.y);
+  var w=Math.abs(selCurrent.x-selStart.x), h=Math.abs(selCurrent.y-selStart.y);
+  sctx.strokeStyle='#e85d26'; sctx.lineWidth=2; sctx.setLineDash([6,3]);
+  sctx.strokeRect(x,y,w,h); sctx.fillStyle='rgba(232,93,38,0.10)'; sctx.fillRect(x,y,w,h);
+  sctx.setLineDash([]);
+}
+function drawHandles(r, color) {
+  var pts=[[r.x,r.y],[r.x+r.w/2,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h/2],
+           [r.x+r.w,r.y+r.h],[r.x+r.w/2,r.y+r.h],[r.x,r.y+r.h],[r.x,r.y+r.h/2]];
+  pts.forEach(function(pt){
+    octx.beginPath(); octx.arc(pt[0],pt[1],HANDLE_R,0,Math.PI*2);
+    octx.fillStyle='#fff'; octx.fill();
+    octx.strokeStyle=color; octx.lineWidth=2; octx.stroke();
   });
+}
+function hexToRgb(hex){ return parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16); }
+function drawRegion(r, imported) {
+  var rgb=hexToRgb(r.color);
+  octx.fillStyle='rgba('+rgb+','+(imported?0.12:0.18)+')'; octx.fillRect(r.x,r.y,r.w,r.h);
+  octx.strokeStyle=r.color; octx.lineWidth=imported?1.5:2;
+  if(imported) octx.setLineDash([6,4]);
+  octx.strokeRect(r.x,r.y,r.w,r.h); octx.setLineDash([]);
+  var fs=Math.min(13,Math.max(8,r.h*0.35));
+  octx.font=(imported?'500':'600')+' '+fs+'px DM Sans,sans-serif';
+  octx.fillStyle=r.color; octx.textAlign='center'; octx.textBaseline='middle';
+  var label=(imported?'↩ ':'')+( r.name.length>16?r.name.slice(0,14)+'…':r.name);
+  octx.fillText(label, r.x+r.w/2, r.y+r.h/2);
+  drawHandles(r, r.color);
+}
+function redrawRegions() {
+  octx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
+  importedRegions.forEach(function(r){ drawRegion(r,true); });
+  regions.forEach(function(r){ drawRegion(r,false); });
+}
+
+// ── UI ──
+function updateUI() {
+  var list=document.getElementById('regions-list');
+  var count=document.getElementById('region-count');
+  var genBtn=document.getElementById('generate-btn');
+  var clrBtn=document.getElementById('clear-btn');
+  var total=regions.length+importedRegions.length;
+  count.textContent=total; genBtn.disabled=total===0; clrBtn.disabled=total===0&&!pdfPage;
+  var html='';
+  if (importedRegions.length) {
+    html+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:4px 2px 2px;">Importadas</div>';
+    html+=importedRegions.map(function(r,i){
+      return '<div class="region-item" style="opacity:.85;"><div class="region-color-dot" style="border:1.5px dashed '+r.color+';background:transparent;"></div><div class="region-name" title="'+r.name+'">'+r.name+'</div><div class="region-coords">'+r.ptX+','+r.ptY+' · '+r.ptW+'×'+r.ptH+'</div><button class="region-del" onclick="deleteImported('+i+')"><span class="material-icons-round">close</span></button></div>';
+    }).join('');
+  }
+  if (regions.length) {
+    if (importedRegions.length) html+='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 2px 2px;">Novas</div>';
+    html+=regions.map(function(r,i){
+      return '<div class="region-item"><div class="region-color-dot" style="background:'+r.color+'"></div><div class="region-name" title="'+r.name+'">'+r.name+'</div><div class="region-coords">'+r.ptX+','+r.ptY+' · '+r.ptW+'×'+r.ptH+'</div><button class="region-del" onclick="deleteRegion('+i+')"><span class="material-icons-round">close</span></button></div>';
+    }).join('');
+  }
+  if (!html) html='<div class="empty-state"><span class="material-icons-round">crop_free</span>Nenhuma região criada</div>';
+  list.innerHTML=html;
+}
+function deleteRegion(i) { regions.splice(i,1); redrawRegions(); updateUI(); document.getElementById('code-output').style.display='none'; }
+function deleteImported(i) { importedRegions.splice(i,1); redrawRegions(); updateUI(); document.getElementById('code-output').style.display='none'; }
+
+// ── GENERATE CODE ──
+document.getElementById('generate-btn').addEventListener('click', function(){
+  var total=regions.length+importedRegions.length; if(!total) return;
+  function toSnippet(r){ return 'stripper.addRegion("'+r.name+'", new Rectangle('+r.ptX+', '+r.ptY+', '+r.ptW+', '+r.ptH+'));'; }
+  var parts=[];
+  if(importedRegions.length){ parts.push('// Regiões importadas'); importedRegions.forEach(function(r){parts.push(toSnippet(r));}); }
+  if(regions.length){ if(importedRegions.length)parts.push(''); parts.push('// Novas regiões'); regions.forEach(function(r){parts.push(toSnippet(r));}); }
+  var lines=parts.join('\n');
+  var out=document.getElementById('code-output'); out.style.display='block'; out.textContent=lines;
+  navigator.clipboard.writeText(lines).then(function(){ showToast('Código copiado!'); }).catch(function(){ showToast('Código gerado! Copie manualmente.'); });
+});
+
+// ── CLEAR ALL ──
+document.getElementById('clear-btn').addEventListener('click', function(){
+  regions=[]; importedRegions=[]; pdfDoc=null; pdfPage=null; pdfViewport=null; renderTask=null;
+  ctx.clearRect(0,0,pdfCanvas.width,pdfCanvas.height);
+  octx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
+  sctx.clearRect(0,0,selCanvas.width,selCanvas.height);
+  canvasScroll.classList.remove('visible'); zoomToolbar.classList.remove('visible');
+  dropZone.style.display=''; pdfInput.value='';
+  document.getElementById('import-textarea').value='';
+  document.getElementById('code-output').style.display='none';
+  document.getElementById('code-output').textContent='';
+  document.getElementById('region-name').value='';
+  zoomLevel=1.0; zoomLevelEl.textContent='100%';
+  updateUI();
+});
 </script>
 </body>
 </html>
